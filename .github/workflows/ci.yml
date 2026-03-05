@@ -117,8 +117,9 @@ jobs:
           echo "=== Connection test ===" > /tmp/migrate.log
           psql "$DB" -c "SELECT version();" >> /tmp/migrate.log 2>&1
           echo "=== Listing migration files ===" >> /tmp/migrate.log
-          ls -la packages/database/prisma/migrations/*/migration.sql >> /tmp/migrate.log 2>&1
+          ls packages/database/prisma/migrations/*/migration.sql >> /tmp/migrate.log 2>&1
           echo "=== Applying migrations ===" >> /tmp/migrate.log
+          set +e
           for f in packages/database/prisma/migrations/*/migration.sql; do
             echo ">>> $f" >> /tmp/migrate.log
             psql "$DB" -v ON_ERROR_STOP=1 -f "$f" >> /tmp/migrate.log 2>&1
@@ -126,31 +127,19 @@ jobs:
             echo "EXIT=$rc" >> /tmp/migrate.log
             if [ $rc -ne 0 ]; then exit 1; fi
           done
-      - name: Upload migration log
+      - name: Post migration log
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: migration-log
-          path: /tmp/migrate.log
-      - name: Post migration log as commit comment
-        if: steps.migrate.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.sha }}
           REPO: ${{ github.repository }}
         run: |
-          BODY=$(python3 -c "import sys; print(open('/tmp/migrate.log').read()[:3000])")
-          python3 -c "
-          import os, json, urllib.request
-          body = '''Migration log:\n\`\`\`\n''' + open('/tmp/migrate.log').read()[:3000] + '''\n\`\`\`'''
-          data = json.dumps({'body': body}).encode()
-          req = urllib.request.Request(
-            f'https://api.github.com/repos/{os.environ[\"REPO\"]}/commits/{os.environ[\"SHA\"]}/comments',
-            data=data,
-            headers={'Authorization': f'token {os.environ[\"GH_TOKEN\"]}', 'Accept': 'application/vnd.github.v3+json'},
-            method='POST')
-          urllib.request.urlopen(req)
-          "
+          BODY=$(jq -Rs '.' < /tmp/migrate.log)
+          curl -s -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/commits/$SHA/comments" \
+            -d "{\"body\": $BODY}"
       - name: Fail if migrations failed
         if: steps.migrate.outcome == 'failure'
         run: exit 1
