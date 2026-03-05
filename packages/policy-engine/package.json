@@ -1,0 +1,14 @@
+{
+  "name": "@repo/policy-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "node ../../scripts/noop.mjs",
+    "lint": "node ../../scripts/noop.mjs",
+    "test": "node ../../scripts/noop.mjs",
+    "typecheck": "node ../../scripts/noop.mjs"
+  }
+}

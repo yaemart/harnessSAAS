@@ -1,0 +1,12 @@
+[importlinter]
+root_package = src
+
+[importlinter:contract:death-line-isolation]
+name = Cognition must not touch Execution
+type = layers
+layers =
+    execution    # Muscle (Real world access)
+    constitution # Proxy (Interception)
+    cognition    # Brain (Pure reasoning)
+ignore_imports =
+    # Add any strictly necessary bridge types here

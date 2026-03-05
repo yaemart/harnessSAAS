@@ -1,0 +1,41 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: agent-state
+# References: openapi.yaml#/components/schemas/AgentState
+# Depends on: Intent, SignalContext, ConfidenceScore from openapi.yaml
+
+type: object
+properties:
+  run_id:
+    type: string
+  tenant_id:
+    type: string
+  trace_id:
+    type: string
+  intent:
+    $ref: '../openapi.yaml#/components/schemas/Intent'
+  signal_context:
+    $ref: '../openapi.yaml#/components/schemas/SignalContext'
+  performance:
+    type: object
+    additionalProperties: true
+  commodity_plan:
+    type: object
+    additionalProperties: true
+  listing_context:
+    type: object
+    additionalProperties: true
+  risk:
+    type: object
+    additionalProperties: true
+  constitution:
+    type: object
+    additionalProperties: true
+  confidence:
+    $ref: '../openapi.yaml#/components/schemas/ConfidenceScore'
+  lifecycle_stage:
+    type: string
+    enum: [LAUNCH, GROWTH, MATURE, DECLINE]
+  outcome:
+    type: object
+    additionalProperties: true
+required: [run_id, tenant_id, trace_id, intent]

@@ -1,0 +1,12 @@
+{
+  "name": "@repo/agent-contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../scripts/noop.mjs",
+    "lint": "node ../../scripts/noop.mjs",
+    "test": "node ../../scripts/noop.mjs",
+    "typecheck": "node ../../scripts/noop.mjs"
+  }
+}

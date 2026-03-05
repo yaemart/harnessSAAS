@@ -1,0 +1,363 @@
+/*
+ * Portal Theme: Luxury Noir
+ * Deep dark background with gold accents and serif typography.
+ * Suited for premium, luxury, and high-end lifestyle brands.
+ */
+
+.theme-luxury-noir {
+  /* ── Core Palette ── */
+  --portal-bg: #0c0a08;
+  --portal-bg-warm: #161310;
+  --portal-bg-card: #1e1a16;
+  --portal-sand: #2a2520;
+  --portal-stone: #3d3630;
+
+  /* ── Text ── */
+  --portal-text-primary: #f0ece6;
+  --portal-text-secondary: #c4bdb4;
+  --portal-text-tertiary: #8a8078;
+  --portal-text-muted: #5a524a;
+
+  /* ── Accent ── */
+  --portal-accent: #c9a84c;
+  --portal-accent-light: #3d3420;
+  --portal-accent-rgb: 201, 168, 76;
+
+  /* ── Semantic ── */
+  --portal-success: #7a9c6a;
+  --portal-danger: #c46a5a;
+  --portal-info: #6a8a9c;
+  --portal-warning: #c9a84c;
+
+  /* ── Borders & Shadows ── */
+  --portal-border: #2a2520;
+  --portal-border-subtle: rgba(201, 168, 76, 0.1);
+  --portal-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --portal-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --portal-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
+
+  /* ── Radius ── */
+  --portal-radius-sm: 2px;
+  --portal-radius-md: 4px;
+  --portal-radius-lg: 6px;
+  --portal-radius-xl: 8px;
+  --portal-radius-pill: 999px;
+
+  /* ── Glass ── */
+  --portal-glass-bg: rgba(12, 10, 8, 0.92);
+  --portal-glass-blur: 20px;
+
+  /* ── Typography ── */
+  --portal-font-heading: 'Playfair Display', Georgia, serif;
+  --portal-font-body: 'Lato', -apple-system, sans-serif;
+  --portal-font-mono: 'DM Mono', monospace;
+
+  /* ── Spacing scale ── */
+  --portal-space-xs: 4px;
+  --portal-space-sm: 8px;
+  --portal-space-md: 16px;
+  --portal-space-lg: 24px;
+  --portal-space-xl: 32px;
+  --portal-space-2xl: 48px;
+  --portal-space-3xl: 64px;
+  --portal-space-4xl: 80px;
+
+  /* ── Layout ── */
+  --portal-nav-height: 72px;
+  --portal-sidebar-width: 380px;
+  --portal-chat-sidebar-width: 300px;
+  --portal-content-max-width: 1200px;
+}
+
+/* ── Base ── */
+.theme-luxury-noir,
+.theme-luxury-noir body {
+  background: var(--portal-bg);
+  color: var(--portal-text-primary);
+  font-family: var(--portal-font-body);
+  font-weight: 300;
+}
+
+/* ── Navigation ── */
+.theme-luxury-noir .portal-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--portal-glass-bg);
+  backdrop-filter: blur(var(--portal-glass-blur));
+  border-bottom: 1px solid var(--portal-border);
+  padding: 0 var(--portal-space-3xl);
+  height: var(--portal-nav-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-luxury-noir .portal-nav-brand {
+  font-family: var(--portal-font-heading);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  color: var(--portal-text-primary);
+  text-transform: uppercase;
+}
+
+.theme-luxury-noir .portal-nav-brand-accent {
+  color: var(--portal-accent);
+}
+
+.theme-luxury-noir .portal-nav-links {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+}
+
+.theme-luxury-noir .portal-nav-link {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--portal-text-tertiary);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.3s;
+  text-decoration: none;
+}
+
+.theme-luxury-noir .portal-nav-link:hover {
+  color: var(--portal-accent);
+}
+
+/* ── Buttons ── */
+.theme-luxury-noir .portal-btn-primary {
+  background: var(--portal-accent);
+  color: var(--portal-bg);
+  border: none;
+  padding: 16px 36px;
+  font-family: var(--portal-font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-lg);
+  transition: all 0.3s;
+  border-radius: 0;
+}
+
+.theme-luxury-noir .portal-btn-primary:hover {
+  background: #d4b85c;
+  transform: translateX(4px);
+}
+
+.theme-luxury-noir .portal-btn-secondary {
+  background: transparent;
+  color: var(--portal-accent);
+  border: 1px solid var(--portal-accent);
+  padding: 15px 36px;
+  font-family: var(--portal-font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--portal-space-lg);
+  transition: all 0.3s;
+  border-radius: 0;
+}
+
+.theme-luxury-noir .portal-btn-secondary:hover {
+  background: rgba(var(--portal-accent-rgb), 0.1);
+  transform: translateX(4px);
+}
+
+.theme-luxury-noir .portal-btn-nav {
+  background: transparent;
+  color: var(--portal-accent);
+  border: 1px solid var(--portal-accent);
+  padding: 10px 24px;
+  font-family: var(--portal-font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 0;
+}
+
+.theme-luxury-noir .portal-btn-nav:hover {
+  background: var(--portal-accent);
+  color: var(--portal-bg);
+}
+
+/* ── Hero ── */
+.theme-luxury-noir .portal-hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-luxury-noir .portal-hero-left {
+  padding: var(--portal-space-4xl) var(--portal-space-3xl);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.theme-luxury-noir .portal-hero-eyebrow {
+  font-family: var(--portal-font-mono);
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: var(--portal-accent);
+  text-transform: uppercase;
+  margin-bottom: var(--portal-space-xl);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.theme-luxury-noir .portal-hero-eyebrow::before {
+  content: '';
+  width: 48px;
+  height: 1px;
+  background: var(--portal-accent);
+}
+
+.theme-luxury-noir .portal-hero-title {
+  font-family: var(--portal-font-heading);
+  font-size: clamp(40px, 5vw, 76px);
+  font-weight: 400;
+  line-height: 1.05;
+  color: var(--portal-text-primary);
+  margin-bottom: 32px;
+  letter-spacing: -1px;
+}
+
+.theme-luxury-noir .portal-hero-title em {
+  font-style: italic;
+  color: var(--portal-accent);
+}
+
+.theme-luxury-noir .portal-hero-sub {
+  font-size: 15px;
+  color: var(--portal-text-tertiary);
+  line-height: 1.9;
+  max-width: 420px;
+  margin-bottom: var(--portal-space-2xl);
+  letter-spacing: 0.5px;
+}
+
+.theme-luxury-noir .portal-hero-right {
+  background: var(--portal-bg-warm);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--portal-border);
+}
+
+/* ── Floating Product Cards ── */
+.theme-luxury-noir .portal-float-card { position: absolute; background: var(--portal-bg-card); border-radius: var(--portal-radius-lg); box-shadow: var(--portal-shadow-md); padding: 20px; border: 1px solid var(--portal-border); }
+.theme-luxury-noir .portal-float-card--main { width: 220px; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: portalFloat 6s ease-in-out infinite; z-index: 3; }
+.theme-luxury-noir .portal-float-card--warranty { width: 180px; top: 10%; right: -10px; animation: portalFloat 6s ease-in-out 1s infinite; z-index: 2; }
+.theme-luxury-noir .portal-float-card--chat { width: 190px; bottom: 5%; left: -10px; animation: portalFloat 6s ease-in-out 2s infinite; z-index: 2; }
+
+/* ── Section Labels ── */
+.theme-luxury-noir .portal-section-label { font-family: var(--portal-font-mono); font-size: 10px; letter-spacing: 4px; color: var(--portal-accent); text-transform: uppercase; margin-bottom: 40px; display: flex; align-items: center; gap: 16px; }
+.theme-luxury-noir .portal-section-label::after { content: ''; flex: 1; height: 1px; background: var(--portal-border); }
+
+/* ── Product Grid ── */
+.theme-luxury-noir .portal-product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1px; background: var(--portal-border); }
+.theme-luxury-noir .portal-product-tile { background: var(--portal-bg); padding: var(--portal-space-xl) 28px; cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+.theme-luxury-noir .portal-product-tile:hover { background: var(--portal-bg-card); }
+.theme-luxury-noir .portal-product-tile::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--portal-accent), transparent); transform: scaleX(0); transition: transform 0.3s; }
+.theme-luxury-noir .portal-product-tile:hover::after { transform: scaleX(1); }
+
+/* ── Product Detail ── */
+.theme-luxury-noir .portal-detail-layout { display: grid; grid-template-columns: var(--portal-sidebar-width) 1fr; min-height: calc(100vh - var(--portal-nav-height)); }
+.theme-luxury-noir .portal-sidebar { background: var(--portal-bg-warm); border-right: 1px solid var(--portal-border); padding: var(--portal-space-2xl) 40px; position: sticky; top: var(--portal-nav-height); height: calc(100vh - var(--portal-nav-height)); overflow-y: auto; }
+.theme-luxury-noir .portal-warranty-card { background: var(--portal-bg-card); border: 1px solid var(--portal-border); border-radius: var(--portal-radius-lg); padding: 24px; margin-bottom: 20px; }
+.theme-luxury-noir .portal-warranty-track { height: 3px; background: var(--portal-sand); border-radius: 0; margin-bottom: 8px; }
+.theme-luxury-noir .portal-warranty-fill { height: 100%; background: linear-gradient(90deg, var(--portal-accent), #d4b85c); border-radius: 0; transition: width 0.6s; }
+
+/* ── Tabs ── */
+.theme-luxury-noir .portal-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--portal-border); margin-bottom: 40px; }
+.theme-luxury-noir .portal-tab { padding: 16px 28px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--portal-text-tertiary); cursor: pointer; border-bottom: 1px solid transparent; margin-bottom: -1px; transition: all 0.3s; background: none; border-top: none; border-left: none; border-right: none; font-family: var(--portal-font-body); }
+.theme-luxury-noir .portal-tab[data-active="true"] { color: var(--portal-accent); border-bottom-color: var(--portal-accent); }
+.theme-luxury-noir .portal-tab:hover:not([data-active="true"]) { color: var(--portal-text-secondary); }
+
+/* ── FAQ ── */
+.theme-luxury-noir .portal-faq-search input { width: 100%; background: var(--portal-bg-warm); border: 1px solid var(--portal-border); padding: 16px 48px 16px 24px; font-family: var(--portal-font-body); font-size: 14px; color: var(--portal-text-primary); outline: none; border-radius: 0; transition: border-color 0.3s; letter-spacing: 0.5px; }
+.theme-luxury-noir .portal-faq-search input:focus { border-color: var(--portal-accent); }
+.theme-luxury-noir .portal-faq-item { border-bottom: 1px solid var(--portal-border); padding: 24px 0; cursor: pointer; }
+.theme-luxury-noir .portal-faq-question { display: flex; align-items: center; justify-content: space-between; font-size: 15px; color: var(--portal-text-secondary); font-weight: 400; transition: color 0.3s; letter-spacing: 0.3px; }
+.theme-luxury-noir .portal-faq-item:hover .portal-faq-question { color: var(--portal-accent); }
+.theme-luxury-noir .portal-faq-answer { font-size: 14px; color: var(--portal-text-tertiary); line-height: 1.9; margin-top: 16px; }
+
+/* ── Manual ── */
+.theme-luxury-noir .portal-manual-section { background: var(--portal-bg-warm); border: 1px solid var(--portal-border); border-radius: 0; padding: 28px; margin-bottom: 1px; display: flex; align-items: center; gap: 24px; cursor: pointer; transition: all 0.3s; }
+.theme-luxury-noir .portal-manual-section:hover { background: var(--portal-bg-card); border-color: rgba(var(--portal-accent-rgb), 0.2); }
+
+/* ── Recipe Grid ── */
+.theme-luxury-noir .portal-recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1px; background: var(--portal-border); }
+.theme-luxury-noir .portal-recipe-card { background: var(--portal-bg); overflow: hidden; cursor: pointer; transition: all 0.3s; }
+.theme-luxury-noir .portal-recipe-card:hover { background: var(--portal-bg-card); }
+
+/* ── Chat ── */
+.theme-luxury-noir .portal-chat-layout { display: grid; grid-template-columns: var(--portal-chat-sidebar-width) 1fr; height: calc(100vh - var(--portal-nav-height)); }
+.theme-luxury-noir .portal-chat-sidebar { background: var(--portal-bg-warm); border-right: 1px solid var(--portal-border); padding: 28px 24px; overflow-y: auto; }
+.theme-luxury-noir .portal-agent-status { background: linear-gradient(135deg, rgba(var(--portal-accent-rgb), 0.12), transparent); border: 1px solid rgba(var(--portal-accent-rgb), 0.15); border-radius: var(--portal-radius-lg); padding: 20px; margin-bottom: 24px; color: var(--portal-text-primary); }
+.theme-luxury-noir .portal-agent-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--portal-accent); box-shadow: 0 0 8px rgba(var(--portal-accent-rgb), 0.5); animation: portalPulse 2s infinite; }
+.theme-luxury-noir .portal-msg-bubble { background: var(--portal-bg-card); border: 1px solid var(--portal-border); border-radius: 0 12px 12px 12px; padding: 16px 20px; font-size: 14px; line-height: 1.8; color: var(--portal-text-primary); letter-spacing: 0.2px; }
+.theme-luxury-noir .portal-msg-bubble--user { background: rgba(var(--portal-accent-rgb), 0.12); color: var(--portal-text-primary); border: 1px solid rgba(var(--portal-accent-rgb), 0.2); border-radius: 12px 0 12px 12px; }
+.theme-luxury-noir .portal-msg-meta { font-size: 10px; color: var(--portal-text-muted); margin-top: 6px; font-family: var(--portal-font-mono); letter-spacing: 1px; }
+.theme-luxury-noir .portal-media-analysis { background: var(--portal-bg-warm); border: 1px solid var(--portal-border); border-radius: var(--portal-radius-md); padding: 14px 16px; margin-top: 8px; font-size: 12px; }
+.theme-luxury-noir .portal-media-tag { display: inline-block; background: rgba(106, 138, 156, 0.1); color: var(--portal-info); font-size: 10px; padding: 3px 8px; border-radius: 2px; margin-right: 4px; margin-bottom: 4px; font-family: var(--portal-font-mono); }
+.theme-luxury-noir .portal-chat-input textarea { flex: 1; background: var(--portal-bg-warm); border: 1px solid var(--portal-border); padding: 14px 20px; font-family: var(--portal-font-body); font-size: 14px; color: var(--portal-text-primary); outline: none; resize: none; height: 48px; border-radius: 0; transition: border-color 0.3s; line-height: 1.5; letter-spacing: 0.3px; }
+.theme-luxury-noir .portal-chat-input textarea:focus { border-color: var(--portal-accent); }
+
+/* ── Forms ── */
+.theme-luxury-noir .portal-form-label { font-family: var(--portal-font-body); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--portal-text-tertiary); margin-bottom: 10px; display: block; }
+.theme-luxury-noir .portal-form-input,
+.theme-luxury-noir .portal-form-textarea,
+.theme-luxury-noir .portal-form-select { width: 100%; background: var(--portal-bg-warm); border: 1px solid var(--portal-border); padding: 14px 20px; font-family: var(--portal-font-body); font-size: 14px; color: var(--portal-text-primary); outline: none; border-radius: 0; transition: border-color 0.3s; letter-spacing: 0.3px; }
+.theme-luxury-noir .portal-form-input:focus,
+.theme-luxury-noir .portal-form-textarea:focus,
+.theme-luxury-noir .portal-form-select:focus { border-color: var(--portal-accent); }
+
+/* ── Chips ── */
+.theme-luxury-noir .portal-chip { padding: 6px 16px; border: 1px solid var(--portal-border); border-radius: 0; font-size: 11px; letter-spacing: 1px; color: var(--portal-text-tertiary); cursor: pointer; transition: all 0.3s; background: transparent; font-family: var(--portal-font-body); }
+.theme-luxury-noir .portal-chip:hover,
+.theme-luxury-noir .portal-chip[data-active="true"] { background: rgba(var(--portal-accent-rgb), 0.15); color: var(--portal-accent); border-color: var(--portal-accent); }
+
+/* ── MCP Badge ── */
+.theme-luxury-noir .portal-mcp-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(var(--portal-accent-rgb), 0.06); border: 1px solid rgba(var(--portal-accent-rgb), 0.15); border-radius: 0; padding: 5px 12px; font-family: var(--portal-font-mono); font-size: 9px; color: var(--portal-accent); letter-spacing: 2px; }
+
+/* ── Channel Buttons ── */
+.theme-luxury-noir .portal-channel-btn { display: flex; align-items: center; gap: 12px; width: 100%; background: transparent; border: 1px solid var(--portal-border); padding: 14px 20px; margin-bottom: 8px; cursor: pointer; font-family: var(--portal-font-body); font-size: 12px; letter-spacing: 1px; color: var(--portal-text-secondary); border-radius: 0; transition: all 0.3s; text-align: left; }
+.theme-luxury-noir .portal-channel-btn:hover { background: rgba(var(--portal-accent-rgb), 0.08); color: var(--portal-accent); border-color: rgba(var(--portal-accent-rgb), 0.3); }
+
+/* ── Warranty Page ── */
+.theme-luxury-noir .portal-warranty-steps { display: flex; gap: 1px; margin-bottom: 40px; background: var(--portal-border); }
+.theme-luxury-noir .portal-warranty-step { flex: 1; text-align: center; padding: 24px 16px; background: var(--portal-bg); }
+.theme-luxury-noir .portal-warranty-step-num { width: 32px; height: 32px; border-radius: 0; background: var(--portal-accent); color: var(--portal-bg); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .theme-luxury-noir .portal-hero { grid-template-columns: 1fr; }
+  .theme-luxury-noir .portal-hero-right { display: none; }
+  .theme-luxury-noir .portal-detail-layout { grid-template-columns: 1fr; }
+  .theme-luxury-noir .portal-chat-layout { grid-template-columns: 1fr; }
+  .theme-luxury-noir .portal-chat-sidebar { display: none; }
+  .theme-luxury-noir .portal-nav { padding: 0 20px; }
+  .theme-luxury-noir .portal-nav-links { display: none; }
+  .theme-luxury-noir .portal-hero-left { padding: var(--portal-space-2xl) var(--portal-space-lg); }
+}

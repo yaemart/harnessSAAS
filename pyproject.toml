@@ -1,0 +1,12 @@
+[project]
+name = "codex-ai-ecom"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "markets_seed/tests", "apps/agent-py"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120

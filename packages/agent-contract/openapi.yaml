@@ -1,0 +1,1541 @@
+openapi: 3.1.0
+info:
+  title: AI Digital Enterprise MVP Contract
+  version: 0.1.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /run:
+    post:
+      summary: Enqueue a new agent run
+      operationId: runAgent
+      parameters:
+        - in: header
+          name: x-tenant-id
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-intent-origin
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-intent-ts
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-intent-signature
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-intent-nonce
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-decision-token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+  /approvals:
+    get:
+      summary: List approval queue items
+      operationId: listApprovals
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of approvals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApprovalItem'
+                required: [items]
+  /approvals/{id}/approve:
+    post:
+      summary: Approve an approval item
+      operationId: approveItem
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-tenant-id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reviewerId:
+                  type: string
+              required: []
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalActionResponse'
+  /approvals/{id}/reject:
+    post:
+      summary: Reject an approval item
+      operationId: rejectItem
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: x-tenant-id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required: []
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalActionResponse'
+  /approvals/expire:
+    post:
+      summary: Expire pending approvals older than threshold
+      operationId: expireApprovals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                olderThanMinutes:
+                  type: number
+      parameters:
+        - in: header
+          name: x-tenant-id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expire result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  expired:
+                    type: integer
+                required: [ok, expired]
+  /listings:
+    get:
+      summary: List listings
+      operationId: listListings
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: commodityId
+          schema:
+            type: string
+        - in: query
+          name: platform
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of listings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ListingItem'
+                required: [items]
+    post:
+      summary: Create listing
+      operationId: createListing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListingRequest'
+      responses:
+        '201':
+          description: Created listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/ListingItem'
+                required: [item]
+  /listings/{id}/status:
+    patch:
+      summary: Update listing status
+      operationId: updateListingStatus
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateListingStatusRequest'
+      responses:
+        '200':
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/ListingItem'
+                required: [item]
+  /lifecycle/sync:
+    post:
+      summary: Trigger lifecycle aggregation sync
+      operationId: syncLifecycle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LifecycleSyncRequest'
+      responses:
+        '200':
+          description: Sync executed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  level:
+                    type: string
+                  id:
+                    type: string
+                required: [ok, level, id]
+  /rule-templates:
+    get:
+      summary: List rule templates
+      operationId: listRuleTemplates
+      responses:
+        '200':
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RuleTemplate'
+                required: [items]
+  /rule-templates/{id}/apply:
+    post:
+      summary: Apply a template and return parsed output
+      operationId: applyRuleTemplate
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                values:
+                  type: object
+                  additionalProperties:
+                    oneOf:
+                      - type: string
+                      - type: number
+      responses:
+        '200':
+          description: Template applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleParseResponse'
+  /rules/parse:
+    post:
+      summary: Parse natural language rules
+      operationId: parseRules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                ruleText:
+                  type: string
+              required: [tenantId, ruleText]
+      responses:
+        '200':
+          description: Parse result with conflicts and suggestions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleParseResponse'
+  /rules/preview:
+    post:
+      summary: Preview rule impact
+      operationId: previewRules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                rules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ParsedRule'
+              required: [tenantId, rules]
+      responses:
+        '200':
+          description: Preview result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preview:
+                    $ref: '#/components/schemas/RulePreview'
+                required: [preview]
+  /rules/conflicts/check:
+    post:
+      summary: Check conflicts from parsed rules
+      operationId: checkRuleConflicts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ParsedRule'
+              required: [rules]
+      responses:
+        '200':
+          description: Conflict list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conflicts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RuleConflict'
+                required: [conflicts]
+  /rules/compile-intents:
+    post:
+      summary: Compile DSL AST to Agent Intents and run policy checks
+      operationId: compileRuleIntents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompileRuleIntentsRequest'
+      responses:
+        '200':
+          description: Compiled intents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompileRuleIntentsResponse'
+  /rules/runtime-facts-schema:
+    get:
+      summary: Get unified runtime facts JSON schema
+      operationId: getRuntimeFactsSchema
+      responses:
+        '200':
+          description: Runtime facts schema
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schema:
+                    $ref: '#/components/schemas/RuntimeFactsSchema'
+                required: [schema]
+  /security/audit/replay:
+    get:
+      summary: Replay-block audit report
+      operationId: getReplayAuditReport
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: hours
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Replay audit report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayAuditReport'
+  /security/audit/replay/settings:
+    get:
+      summary: Get tenant replay alert threshold
+      operationId: getReplayAuditSettings
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Replay alert threshold
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayAuditSettings'
+    put:
+      summary: Save tenant replay alert threshold
+      operationId: saveReplayAuditSettings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                threshold:
+                  type: integer
+              required: [tenantId, threshold]
+      responses:
+        '200':
+          description: Replay alert threshold saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplayAuditSettings'
+  /rulesets:
+    get:
+      summary: List rule sets by tenant
+      operationId: listRuleSets
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rule set list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RuleSet'
+                required: [items]
+    post:
+      summary: Create a new rule set with v1
+      operationId: createRuleSet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleSetRequest'
+      responses:
+        '201':
+          description: Created rule set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/RuleSet'
+                required: [item]
+  /rulesets/{id}:
+    get:
+      summary: Get rule set detail
+      operationId: getRuleSet
+      parameters:
+        - in: query
+          name: tenantId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rule set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/RuleSet'
+                required: [item]
+    put:
+      summary: Update a rule set and create a new version
+      operationId: updateRuleSet
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleSetRequest'
+      responses:
+        '200':
+          description: Updated rule set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/RuleSet'
+                required: [item]
+  /rulesets/{id}/rollback:
+    post:
+      summary: Roll back to a historical version by creating a new version
+      operationId: rollbackRuleSet
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackRuleSetRequest'
+      responses:
+        '200':
+          description: Rollback completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/RuleSet'
+                required: [item]
+components:
+  schemas:
+    RunRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        intent:
+          $ref: '#/components/schemas/Intent'
+        context:
+          type: object
+          properties:
+            brandId:
+              type: string
+            productId:
+              type: string
+      required: [tenantId, intent]
+    RunResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          const: ACCEPTED
+        jobId:
+          type: string
+      required: [status, jobId]
+    ApprovalItem:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, EXPIRED]
+        tenantId:
+          type: string
+        intentId:
+          type: string
+        domain:
+          type: string
+        action:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, status, tenantId, intentId, domain, action, createdAt]
+    ApprovalActionResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        id:
+          type: string
+        status:
+          type: string
+          enum: [APPROVED, REJECTED]
+      required: [ok, id, status]
+    Intent:
+      type: object
+      properties:
+        intentId:
+          type: string
+          format: uuid
+        domain:
+          type: string
+          enum: [ads, listing, pricing, inventory, cs]
+        action:
+          type: string
+        target:
+          $ref: '#/components/schemas/IntentTarget'
+        scope:
+          $ref: '#/components/schemas/IntentScope'
+        payload:
+          type: object
+          additionalProperties: true
+        risk:
+          $ref: '#/components/schemas/IntentRisk'
+        reasoning:
+          $ref: '#/components/schemas/IntentReasoning'
+        policySnapshotId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - intentId
+        - domain
+        - action
+        - target
+        - scope
+        - payload
+        - risk
+        - reasoning
+        - createdAt
+    IntentTarget:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [listing, campaign, commodity, product]
+        id:
+          type: string
+      required: [type, id]
+    IntentScope:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        platform:
+          type: string
+        market:
+          type: string
+        brand:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        fulfillment:
+          type: string
+          nullable: true
+      required: [tenantId, platform, market]
+    IntentRisk:
+      type: object
+      properties:
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        level:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        violations:
+          type: array
+          items:
+            type: string
+      required: [score, level, violations]
+    IntentReasoning:
+      type: object
+      properties:
+        summary:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              metric:
+                type: string
+              value:
+                oneOf:
+                  - type: string
+                  - type: number
+              note:
+                type: string
+            required: [metric, value]
+      required: [summary, evidence]
+    ListingItem:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        commodityId:
+          type: string
+        platform:
+          type: string
+        externalListingId:
+          type: string
+        title:
+          type: string
+        fulfillment:
+          type: string
+        isPrimary:
+          type: boolean
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        [id, tenantId, commodityId, platform, externalListingId, title, fulfillment, isPrimary, status, createdAt, updatedAt]
+    CreateListingRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        commodityId:
+          type: string
+        platform:
+          type: string
+        externalListingId:
+          type: string
+        title:
+          type: string
+        fulfillment:
+          type: string
+        isPrimary:
+          type: boolean
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+      required: [tenantId, commodityId, platform, externalListingId, title, fulfillment]
+    UpdateListingStatusRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, ARCHIVED]
+        isPrimary:
+          type: boolean
+      required: [tenantId, status]
+    LifecycleSyncRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        listingId:
+          type: string
+        commodityId:
+          type: string
+        productId:
+          type: string
+      required: [tenantId]
+    RuleTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+        name:
+          type: string
+        scenario:
+          type: string
+        description:
+          type: string
+        defaultText:
+          type: string
+        params:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              label:
+                type: string
+              defaultValue:
+                oneOf:
+                  - type: string
+                  - type: number
+            required: [key, label, defaultValue]
+      required: [id, category, name, scenario, description, defaultText, params]
+    ParsedRule:
+      type: object
+      properties:
+        id:
+          type: string
+        domain:
+          type: string
+          enum: [ads, inventory, pricing, seasonality, risk]
+        metric:
+          type: string
+        operator:
+          type: string
+          enum: ['<', '<=', '>', '>=', '=', 'between']
+        value:
+          oneOf:
+            - type: number
+            - type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                type: number
+        action:
+          type: string
+        priority:
+          type: number
+        sourceText:
+          type: string
+        confidence:
+          type: number
+      required: [id, domain, metric, operator, value, action, priority, sourceText, confidence]
+    RuleConflict:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [DIRECT_CONTRADICTION, LOGIC_CONFLICT, RANGE_OVERLAP, PRIORITY_AMBIGUITY]
+        severity:
+          type: string
+          enum: [CRITICAL, WARNING, INFO]
+        title:
+          type: string
+        detail:
+          type: string
+        involvedRuleIds:
+          type: array
+          items:
+            type: string
+        suggestions:
+          type: array
+          items:
+            type: string
+      required: [type, severity, title, detail, involvedRuleIds, suggestions]
+    RuleSuggestion:
+      type: object
+      properties:
+        suggestionType:
+          type: string
+        title:
+          type: string
+        detail:
+          type: string
+        rationale:
+          type: object
+          additionalProperties: true
+      required: [suggestionType, title, detail, rationale]
+    RuleParseResponse:
+      type: object
+      properties:
+        parse:
+          type: object
+          properties:
+            ast:
+              $ref: '#/components/schemas/RuleDslAst'
+            rules:
+              type: array
+              items:
+                $ref: '#/components/schemas/ParsedRule'
+            unparsedSegments:
+              type: array
+              items:
+                type: string
+          required: [ast, rules, unparsedSegments]
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleConflict'
+        suggestions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleSuggestion'
+      required: [parse, conflicts, suggestions]
+    RuleDslScope:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          nullable: true
+        platform:
+          type: string
+          enum: [amazon, walmart, tiktok, meta, all]
+        market:
+          type: string
+          enum: [US, EU, JP, GLOBAL]
+        brand:
+          type: string
+          nullable: true
+        category:
+          type: string
+          nullable: true
+        fulfillment:
+          type: string
+          enum: [FBA, FBM, ALL]
+        listingLifecycle:
+          type: string
+          enum: [NEW, GROWTH, MATURE, DECLINING, ALL]
+      required: [platform, market, fulfillment, listingLifecycle]
+    RuleDslCondition:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [predicate, group]
+        field:
+          type: string
+        operator:
+          type: string
+        value:
+          oneOf:
+            - type: string
+            - type: number
+            - type: array
+              items:
+                oneOf:
+                  - type: string
+                  - type: number
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDslCondition'
+      required: [kind]
+    RuleDslAction:
+      type: object
+      properties:
+        type:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+      required: [type, params]
+    RuleDslRule:
+      type: object
+      properties:
+        ruleId:
+          type: string
+        domain:
+          type: string
+          enum: [ads, inventory, pricing, seasonality, risk]
+        priority:
+          type: integer
+        scope:
+          $ref: '#/components/schemas/RuleDslScope'
+        when:
+          $ref: '#/components/schemas/RuleDslCondition'
+        then:
+          $ref: '#/components/schemas/RuleDslAction'
+        reasoning:
+          type: string
+        sourceText:
+          type: string
+        confidence:
+          type: number
+      required: [ruleId, domain, priority, scope, when, then, reasoning, sourceText, confidence]
+    RuleDslAst:
+      type: object
+      properties:
+        version:
+          type: string
+          const: '1.0'
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDslRule'
+      required: [version, rules]
+    RuleVersion:
+      type: object
+      properties:
+        id:
+          type: string
+        version:
+          type: integer
+        changeSummary:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rules:
+          type: object
+          additionalProperties: true
+      required: [id, version, createdBy, createdAt, rules]
+    RuleSet:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        language:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        activeVersion:
+          type: integer
+          nullable: true
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleVersion'
+      required: [id, tenantId, name, language, status, createdBy, createdAt, updatedAt]
+    CreateRuleSetRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        createdBy:
+          type: string
+        changeSummary:
+          type: string
+        ruleText:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+      required: [tenantId, name, createdBy, ruleText]
+    UpdateRuleSetRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        updatedBy:
+          type: string
+        ruleText:
+          type: string
+        changeSummary:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PUBLISHED, ARCHIVED]
+        name:
+          type: string
+        description:
+          type: string
+      required: [tenantId, updatedBy, ruleText]
+    RollbackRuleSetRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        toVersion:
+          type: integer
+        updatedBy:
+          type: string
+        changeSummary:
+          type: string
+      required: [tenantId, toVersion, updatedBy]
+    RulePreview:
+      type: object
+      properties:
+        affectedListings:
+          type: integer
+        totalListings:
+          type: integer
+        estimatedSpendDeltaPct:
+          type: number
+        estimatedSalesDeltaPct:
+          type: number
+        estimatedAcosFrom:
+          type: number
+        estimatedAcosTo:
+          type: number
+        examples:
+          type: array
+          items:
+            type: object
+            properties:
+              listingTitle:
+                type: string
+              current:
+                type: string
+              projected:
+                type: string
+            required: [listingTitle, current, projected]
+      required:
+        [affectedListings, totalListings, estimatedSpendDeltaPct, estimatedSalesDeltaPct, estimatedAcosFrom, estimatedAcosTo, examples]
+    CompileRuleIntentsRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        target:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [listing, campaign, commodity, product]
+            id:
+              type: string
+          required: [type, id]
+        ruleText:
+          type: string
+        ast:
+          $ref: '#/components/schemas/RuleDslAst'
+        context:
+          type: object
+          properties:
+            brandId:
+              type: string
+            productId:
+              type: string
+        runtimeFacts:
+          $ref: '#/components/schemas/RuntimeFacts'
+        execute:
+          type: boolean
+      required: [tenantId, target]
+    CompiledIntentDecision:
+      type: object
+      properties:
+        approved:
+          type: boolean
+        riskScore:
+          type: number
+        riskLevel:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        violations:
+          type: array
+          items:
+            type: string
+        requiresApproval:
+          type: boolean
+      required: [approved, riskScore, riskLevel, violations, requiresApproval]
+    CompileRuleIntentsResponse:
+      type: object
+      properties:
+        ast:
+          $ref: '#/components/schemas/RuleDslAst'
+        intents:
+          type: array
+          items:
+            type: object
+            properties:
+              intent:
+                $ref: '#/components/schemas/Intent'
+              decision:
+                $ref: '#/components/schemas/CompiledIntentDecision'
+              condition:
+                $ref: '#/components/schemas/CompiledConditionDecision'
+              decisionToken:
+                type: string
+                nullable: true
+            required: [intent, decision, condition, decisionToken]
+        summary:
+          type: object
+          properties:
+            total:
+              type: integer
+            approved:
+              type: integer
+            rejected:
+              type: integer
+            queued:
+              type: integer
+          required: [total, approved, rejected, queued]
+        rejected:
+          type: array
+          items:
+            type: object
+            properties:
+              intentId:
+                type: string
+              action:
+                type: string
+              violations:
+                type: array
+                items:
+                  type: string
+              conditionMatched:
+                type: boolean
+              missingFields:
+                type: array
+                items:
+                  type: string
+            required: [intentId, action, violations, conditionMatched, missingFields]
+        queuedJobs:
+          type: array
+          items:
+            type: object
+            properties:
+              intentId:
+                type: string
+              jobId:
+                type: string
+            required: [intentId, jobId]
+      required: [ast, intents, summary, rejected, queuedJobs]
+    CompiledConditionDecision:
+      type: object
+      properties:
+        expression:
+          type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+        matched:
+          type: boolean
+        missingFields:
+          type: array
+          items:
+            type: string
+      required: [expression, dependencies, matched, missingFields]
+    RuntimeFacts:
+      type: object
+      additionalProperties: false
+      properties:
+        acos: { type: number }
+        target_acos: { type: number }
+        roas: { type: number }
+        bid_change_pct: { type: number }
+        inventory_days: { type: number }
+        new_product_days: { type: number }
+        ctr: { type: number }
+        cvr: { type: number }
+        price: { type: number }
+        profit_margin: { type: number }
+        season_window: { type: string }
+        risk_profile: { type: string }
+        platform: { type: string }
+        market: { type: string }
+        lifecycle: { type: string }
+        is_promotion: { type: boolean }
+        is_new_product: { type: boolean }
+    RuntimeFactsSchema:
+      type: object
+      additionalProperties: true
+    ReplayAuditReport:
+      type: object
+      properties:
+        windowHours:
+          type: integer
+        since:
+          type: string
+          format: date-time
+        totalBlocked:
+          type: integer
+        countsByType:
+          type: object
+          additionalProperties:
+            type: integer
+        dailyBuckets:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              count:
+                type: integer
+            required: [date, count]
+        recent:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              eventType:
+                type: string
+              severity:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+              details:
+                type: object
+                additionalProperties: true
+            required: [id, eventType, severity, createdAt]
+      required: [windowHours, since, totalBlocked, countsByType, dailyBuckets, recent]
+    ReplayAuditSettings:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        threshold:
+          type: integer
+        source:
+          type: string
+          enum: [TENANT, DEFAULT]
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [tenantId, threshold, source, updatedAt]
+    ToolCall:
+      type: object
+      properties:
+        toolId:
+          type: string
+        toolType:
+          type: string
+          enum: [read, write]
+        input:
+          type: object
+          additionalProperties: true
+        output:
+          type: object
+          additionalProperties: true
+        durationMs:
+          type: number
+        status:
+          type: string
+          enum: [SUCCESS, FAILED, TIMEOUT]
+        error:
+          type: string
+          nullable: true
+      required: [toolId, toolType, input, output, durationMs, status]
+    SignalContext:
+      type: object
+      properties:
+        platform:
+          type: string
+        market:
+          type: string
+        categoryId:
+          type: string
+          nullable: true
+        lifecycleStage:
+          type: string
+          enum: [LAUNCH, GROWTH, MATURE, DECLINE]
+        profitMarginPct:
+          type: number
+        reviewScore:
+          type: number
+        reviewCount:
+          type: integer
+      required: [platform, market]
+    ConfidenceScore:
+      type: object
+      properties:
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+        level:
+          type: string
+          enum: [VERY_LOW, LOW, MEDIUM, HIGH]
+        factors:
+          type: object
+          properties:
+            sampleAdequacy:
+              type: number
+            dataFreshness:
+              type: number
+            signalCompleteness:
+              type: number
+            signalConsistency:
+              type: number
+            decisionMagnitudePenalty:
+              type: number
+            ruleCompliance:
+              type: number
+          required: [sampleAdequacy, dataFreshness, signalCompleteness, signalConsistency, decisionMagnitudePenalty, ruleCompliance]
+      required: [score, level, factors]
+    AgentState:
+      type: object
+      properties:
+        run_id:
+          type: string
+        tenant_id:
+          type: string
+        trace_id:
+          type: string
+        intent:
+          $ref: '#/components/schemas/Intent'
+        signal_context:
+          $ref: '#/components/schemas/SignalContext'
+        performance:
+          type: object
+          additionalProperties: true
+        commodity_plan:
+          type: object
+          additionalProperties: true
+        listing_context:
+          type: object
+          additionalProperties: true
+        risk:
+          type: object
+          additionalProperties: true
+        constitution:
+          type: object
+          additionalProperties: true
+        confidence:
+          $ref: '#/components/schemas/ConfidenceScore'
+        lifecycle_stage:
+          type: string
+          enum: [LAUNCH, GROWTH, MATURE, DECLINE]
+        outcome:
+          type: object
+          additionalProperties: true
+      required: [run_id, tenant_id, trace_id, intent]
+    PlatformCapabilities:
+      type: object
+      properties:
+        platform:
+          type: string
+        supportedActions:
+          type: array
+          items:
+            type: string
+        hasAdsApi:
+          type: boolean
+        hasInventoryApi:
+          type: boolean
+        hasPricingApi:
+          type: boolean
+        rateLimit:
+          type: object
+          properties:
+            requestsPerMinute:
+              type: integer
+            burstLimit:
+              type: integer
+      required: [platform, supportedActions, hasAdsApi, hasInventoryApi, hasPricingApi]

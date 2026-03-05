@@ -1,0 +1,30 @@
+# Sovereign AI-Native Development Constitution (v1.0)
+
+Every developer (human or AI) contributing to this project must strictly adhere to these architectural mandates. Failure to do so will be caught by the CI "Death Line" linter.
+
+## 1. The Architecture Death Line
+**Mandate:** Zero physical dependency from Cognition (Brain) to Execution (Muscle).
+- **Cognition (apps/agent-py/src/nodes/):** Must NOT import platform-specific modules, database clients, or external API wrappers.
+- **Verification:** Every node file MUST call `verify_brain_purity()` at its entry point.
+
+## 2. The Four-Power Model
+**Mandate:** Logic must be split across the four powers.
+- **Intent Power:** Define actions as `AuditableIntent` schemas. No ad-hoc dictionaries.
+- **Cognition Power:** Reasoning nodes must be pure functions. They transform Context -> Intent + ReasoningLog.
+- **Constraint Power (Constitution):** All rules must reside in the mandatory interceptor layer. Never bake "Hard Rules" into the Brain's prompt alone.
+- **Execution Power:** Platform logic must be encapsulated in `IPlatformAgent` implementations in `platforms/`.
+
+## 3. OODA Protocol
+**Mandate:** All reasoning must be structured.
+- Every major decision node must output a `ReasoningLog` containing **Observe**, **Orient**, **Decide**, and **Act** blocks.
+- **Observe** is the only place where `Read-Only` skills can be mapped.
+
+## 4. Federated Autonomy
+- Platforms are black boxes to the Brain.
+- Brain selects platform based on `get_capabilities()`.
+- Platforms MUST emit `ExecutionReceipt` as proof of work.
+
+---
+**Enforcement:**
+- CI runs `import-linter`.
+- Git hook runs `lint_death_line.py`.

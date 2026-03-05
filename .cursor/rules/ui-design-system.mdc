@@ -1,0 +1,144 @@
+---
+description: UI design system rules for all frontend development in apps/web
+globs: apps/web/**/*.tsx, apps/web/**/*.ts, apps/web/**/*.css
+alwaysApply: true
+---
+
+# UI Design System — Mandatory Rules
+
+All UI code in `apps/web/` MUST follow these rules. Violations break visual consistency across themes.
+
+## 1. Color: ONLY use CSS variables
+
+NEVER hardcode colors. Always use `var(--token-name)`.
+
+| Purpose | Token | Example |
+|---------|-------|---------|
+| Page background | `--bg-color` | `background: var(--bg-color)` |
+| Card/panel background | `--panel-bg` | `background: var(--panel-bg)` |
+| Sidebar background | `--sidebar-bg` | |
+| Primary text | `--text-primary` | `color: var(--text-primary)` |
+| Secondary text | `--text-secondary` | |
+| Tertiary/disabled text | `--text-tertiary` | |
+| Accent/link/primary action | `--accent` | |
+| Accent RGB (for rgba()) | `--accent-rgb` | `rgba(var(--accent-rgb), 0.15)` |
+| Accent hover | `--accent-hover` | |
+| Success | `--success` | |
+| Danger/error | `--danger` | |
+| Warning | `--warning` | |
+| Border (general) | `--border` | |
+| Panel border | `--panel-border` | |
+| Sidebar border | `--sidebar-border` | |
+| Panel shadow | `--panel-shadow` | |
+| Glass blur | `--glass-blur` | |
+
+For tinted backgrounds (e.g. success badge bg), use `color-mix()`:
+```css
+background: color-mix(in srgb, var(--success) 15%, transparent);
+```
+
+NEVER use raw `rgba(52, 199, 89, 0.15)` — these break in non-default themes.
+
+## 2. Typography
+
+| Element | Font Size | Weight | Class |
+|---------|-----------|--------|-------|
+| Body default | 13px | 400 | (inherited) |
+| Page title | 20px | 600 | `.ios-title` |
+| Subtitle | 13px | 400 | `.ios-subtitle` |
+| Secondary text | 13px | 400 | `.small` |
+| Table header | 11px | 600 | `th` (global) |
+| Table cell | 13px | 400 | `td` (global) |
+| Button text | 15px | 600 | `button` (global) |
+| Input text | 15px | 400 | `input` (global) |
+| Status pill | 11px | 700 | `.status` |
+| Stat value | 24px | 700 | (inline) |
+| Heading (h1-h6) | varies | 600 | (global, letter-spacing: -0.02em) |
+
+Font stack: `-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif`
+
+NEVER set a different font-family. The `theme-antigravity` engine overrides to serif automatically.
+
+## 3. Spacing
+
+| Context | Value |
+|---------|-------|
+| Main content padding | `32px 40px` |
+| Sidebar padding | `20px 12px` |
+| Card padding (default) | `24px` |
+| Card padding (compact) | `16px` |
+| Table header cell | `12px 16px` |
+| Table body cell | `8px 16px` |
+| Button padding | `10px 18px` |
+| Input padding | `10px 12px` |
+| Section gap (header → content) | `24px` |
+| Inline element gap | `8px` or `12px` |
+| Stat badge padding | `16px` |
+
+## 4. Border Radius
+
+ALWAYS use CSS variables — themes override these to 0px (terminal, cyberpunk, brutalism).
+
+| Token | Default | Usage |
+|-------|---------|-------|
+| `--border-radius-lg` | 6px | Cards, panels |
+| `--border-radius-md` | 4px | Table wraps, inputs |
+| `--border-radius-sm` | 2px | Badges, small elements |
+| `999px` | pill | Buttons, status pills (hardcoded OK) |
+
+## 5. Shadows
+
+ALWAYS use `var(--panel-shadow)` for card/panel shadows. NEVER hardcode shadow values.
+
+## 6. Component Patterns
+
+### Use existing UI components:
+- `<Card>` — wraps content in `.ios-card`
+- `<Badge variant="success|danger|warning|info">` — semantic badge
+- `<StatBadge label="..." value={...}>` — metric display
+- `<PageHeader title="..." subtitle="...">` — page header
+
+### Styling approach:
+- **Layout**: Use CSS classes (`.header`, `.ios-card`, `.card`, `.table-wrap`) + inline `style` for flex/grid
+- **Colors/borders/shadows**: ALWAYS via CSS variables in inline styles
+- **Typography**: Use CSS classes (`.ios-title`, `.ios-subtitle`, `.small`, `.status`)
+- **Spacing**: Inline `style` with values from the spacing table above
+
+### Dark mode:
+- Use `.dark` class on `:root`, NOT `@media (prefers-color-scheme: dark)`
+- All CSS variables auto-switch — no manual dark mode logic needed in components
+- If you must detect dark mode in JS, use `document.documentElement.classList.contains('dark')`
+
+## 7. Forbidden Patterns
+
+- `color: '#007aff'` — use `var(--accent)`
+- `background: 'rgba(52, 199, 89, 0.15)'` — use `color-mix(in srgb, var(--success) 15%, transparent)`
+- `font-family: 'Inter'` or any custom font — use inherited system font
+- `border-radius: 8` without using a token — use `var(--border-radius-lg)`
+- `box-shadow: '0 2px 8px ...'` — use `var(--panel-shadow)`
+- `@media (prefers-color-scheme: dark)` in new code — use `.dark` selector
+- Creating new CSS variables without adding them to ALL theme definitions in `globals.css`
+
+## 8. Adding New Tokens
+
+If you need a new design token:
+1. Add it to `:root` in `globals.css`
+2. Add dark mode override in `:root.dark`
+3. Add overrides in ALL 8 theme engines (terminal, cyberpunk, brutalism, antigravity, solarized-light, vsc-dark, vsc-light, monokai)
+4. Add it to `apps/web/lib/design-tokens.ts`
+5. Document it in this file
+
+## 9. Design System Compliance Checklist (for new pages)
+
+Before submitting any new page or component, verify:
+- [ ] All colors use `var(--*)` or `color-mix()` — zero hardcoded `#hex` or `rgba()`
+- [ ] Typography uses established classes (`.ios-title`, `.ios-subtitle`, `.small`, `.status`) or `design-tokens.ts` sizes
+- [ ] Spacing matches the spacing table above
+- [ ] Border radius uses `var(--border-radius-*)` tokens
+- [ ] Shadows use `var(--panel-shadow)` only
+- [ ] Cards use `<Card>` component or `.ios-card` class
+- [ ] Page header uses `<PageHeader>` component
+- [ ] Metrics use `<StatBadge>` component
+- [ ] Badges use `<Badge>` component with semantic variants
+- [ ] No `@media (prefers-color-scheme)` — dark mode via `.dark` class only
+- [ ] Tested in at least 2 theme engines (default + terminal or cyberpunk)

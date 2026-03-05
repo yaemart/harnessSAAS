@@ -1,0 +1,17 @@
+{
+  "name": "@repo/platform-adapters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "p-queue": "^8.1.0"
+  },
+  "scripts": {
+    "build": "node ../../scripts/noop.mjs",
+    "lint": "node ../../scripts/noop.mjs",
+    "test": "node ../../scripts/noop.mjs",
+    "typecheck": "node ../../scripts/noop.mjs"
+  }
+}

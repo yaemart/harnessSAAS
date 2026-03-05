@@ -1,0 +1,138 @@
+# k8s/cronjobs/market-updater.yaml
+# 三个独立的 CronJob，对应三层更新频率
+
+---
+# Layer 1: 汇率 — 每小时
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: exchange-rate-updater
+  namespace: crossborder-saas
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: updater
+            image: your-registry/market-updater:${IMAGE_TAG}
+            command: ["python", "scheduler/run_layer.py", "--layer", "exchange_rate"]
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "128Mi"
+              limits:
+                cpu: "300m"
+                memory: "256Mi"
+            env:
+            - name: DATABASE_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-secrets
+                  key: admin-url
+            - name: OPEN_EXCHANGE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: open-exchange
+
+---
+# Layer 2: 税率季度检查 — 每季度首日 09:00
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tax-rate-quarterly-check
+  namespace: crossborder-saas
+spec:
+  schedule: "0 9 1 1,4,7,10 *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600    # AI API 调用可能耗时较长
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: checker
+            image: your-registry/market-updater:${IMAGE_TAG}
+            command: ["python", "scheduler/run_layer.py", "--layer", "tax_rate"]
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+            env:
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: notification-secrets
+                  key: slack-webhook
+            - name: AI_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: market-updater-config
+                  key: ai-provider
+            - name: AI_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: market-updater-config
+                  key: ai-model
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-keys
+                  key: anthropic
+
+---
+# Layer 3: 复核日期扫描 — 每月 1 日 10:00
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: market-review-scanner
+  namespace: crossborder-saas
+spec:
+  schedule: "0 10 1 * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 3
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: scanner
+            image: your-registry/market-updater:${IMAGE_TAG}
+            command: ["python", "scheduler/run_layer.py", "--layer", "compliance"]
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "128Mi"
+              limits:
+                cpu: "300m"
+                memory: "256Mi"
+            env:
+            - name: DATABASE_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-secrets
+                  key: admin-url
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: notification-secrets
+                  key: slack-webhook

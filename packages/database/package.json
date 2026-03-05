@@ -1,0 +1,27 @@
+{
+  "name": "@repo/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../scripts/noop.mjs",
+    "lint": "node ../../scripts/noop.mjs",
+    "test": "node ../../scripts/noop.mjs",
+    "typecheck": "node ../../scripts/noop.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "node ./scripts/seed.mjs",
+    "db:bench": "node ./scripts/bench-killer-query.mjs"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.1",
+    "@prisma/client": "^7.4.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "dotenv": "^17.3.1",
+    "pg": "^8.16.3",
+    "prisma": "^7.4.1"
+  }
+}

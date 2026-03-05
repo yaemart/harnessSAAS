@@ -1,0 +1,26 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: platform-capabilities
+# References: openapi.yaml#/components/schemas/PlatformCapabilities
+
+type: object
+properties:
+  platform:
+    type: string
+  supportedActions:
+    type: array
+    items:
+      type: string
+  hasAdsApi:
+    type: boolean
+  hasInventoryApi:
+    type: boolean
+  hasPricingApi:
+    type: boolean
+  rateLimit:
+    type: object
+    properties:
+      requestsPerMinute:
+        type: integer
+      burstLimit:
+        type: integer
+required: [platform, supportedActions, hasAdsApi, hasInventoryApi, hasPricingApi]

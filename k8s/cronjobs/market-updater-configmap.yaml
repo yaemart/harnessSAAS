@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: market-updater-config
+  namespace: crossborder-saas
+data:
+  ai-provider: "anthropic"
+  ai-model: "claude-sonnet-4-6"

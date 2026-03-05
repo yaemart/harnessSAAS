@@ -1,0 +1,1419 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantPlan {
+  starter
+  pro
+  enterprise
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum MappingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+  SOFT_REVOKED
+}
+
+enum EntityType {
+  PRODUCT
+  LISTING
+  SUPPLIER
+  WAREHOUSE
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RuleSetStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RuleConflictSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum RuleConflictType {
+  DIRECT_CONTRADICTION
+  LOGIC_CONFLICT
+  RANGE_OVERLAP
+  PRIORITY_AMBIGUITY
+}
+
+model Tenant {
+  id                      String                   @id @default(uuid()) @db.Uuid
+  code                    String                   @unique
+  name                    String
+  status                  String                   @default("active")
+  plan                    TenantPlan               @default(starter)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  brands                  Brand[]
+  products                Product[]
+  commodities             Commodity[]
+  listings                Listing[]
+  performanceSnapshots    PerformanceSnapshot[]
+  policies                PolicyConfig[]
+  policySnapshots         PolicySnapshot[]
+  executions              AgentExecutionLog[]
+  approvals               ApprovalQueue[]
+  ruleSets                RuleSet[]
+  ruleConflicts           RuleConflictRecord[]
+  ruleSuggestions         RuleSuggestionRecord[]
+  requestNonces           RequestNonce[]
+  securityAuditEvents     SecurityAuditEvent[]
+  executionReceipts       ExecutionReceipt[]
+  agentExperiences        AgentExperience[]
+  users                   User[]
+  userScopes              UserScope[]
+  refreshTokens           RefreshToken[]
+  distilledPatterns       DistilledPattern[]
+  patternApplications     PatternApplication[]
+  // MDM primitives
+  markets                 Market[]
+  platforms               Platform[]
+  categories              Category[]
+  thirdPartyLogistics     ThirdPartyLogistics[]
+  warehouses              Warehouse[]
+  suppliers               Supplier[]
+  erpSystems              ErpSystem[]
+  productChangeLogs       ProductChangeLog[]
+  externalSkuMappings     ExternalSkuMapping[]
+  externalIdMappings      ExternalIdMapping[]
+  mappingHistories        MappingHistory[]
+  costVersions            CostVersion[]
+  // Portal
+  portalConfigs           BrandPortalConfig[]
+  portalConsumers         PortalConsumer[]
+  warranties              WarrantyRegistration[]
+  supportCases            SupportCase[]
+  consumerFaqs            ConsumerFAQ[]
+  productFeedbacks        ProductFeedback[]
+  qrScanEvents            QRScanEvent[]
+  mediaAnalyses           MediaAnalysis[]
+  caseMessages            CaseMessage[]
+  // Harness — AI Governance Runtime
+  knowledgeEntries        KnowledgeEntry[]
+  feedbackSignals         FeedbackSignal[]
+  confidenceLedger        ConfidenceLedger[]
+  tenantMaturity          TenantMaturity?
+  productFeatureSnapshots ProductFeatureSnapshot[]
+  decisionLogs            DecisionLog[]
+  rewardLogs              RewardLog[]
+}
+
+model Brand {
+  id              String             @id @default(uuid()) @db.Uuid
+  tenantId        String             @db.Uuid
+  code            String
+  name            String
+  description     String? // Natural language brand description for AI Agent
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  products        Product[]
+  policies        PolicyConfig[]
+  brandCategories BrandCategory[]
+  // Portal
+  portalConfig    BrandPortalConfig?
+  consumerFaqs    ConsumerFAQ[]
+  portalConsumers PortalConsumer[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Product {
+  id                  String                @id @default(uuid()) @db.Uuid
+  tenantId            String                @db.Uuid
+  brandId             String                @db.Uuid
+  categoryId          String                @db.Uuid
+  supplierId          String?               @db.Uuid
+  sku                 String
+  name                String
+  lifecycleStage      String                @default("NEW")
+  upc                 String?
+  asin                String?
+  costPrice           Decimal?              @db.Decimal(14, 2)
+  msrp                Decimal?              @db.Decimal(14, 2)
+  weight              Decimal?              @db.Decimal(10, 3)
+  dimensions          Json?
+  tags                String[]              @default([])
+  imageUrls           String[]              @default([])
+  attributes          Json? // Legacy generic attributes
+  structuredFeatures  Json? // L2: Knowledge Graph formatted features
+  scenarios           String[]              @default([]) // L3: Usage scenarios
+  targetIntents       String[]              @default([]) // L4: Target user intents
+  competitiveEdges    Json? // L5: Competitive graph advantages
+  dataQualityScore    Float?
+  featureFrozen       Boolean               @default(false)
+  featureFrozenReason String?
+  lastVerifiedAt      DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  brand               Brand                 @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category            Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  supplier            Supplier?             @relation(fields: [supplierId], references: [id])
+  commodities         Commodity[]
+  snapshots           PerformanceSnapshot[]
+  policies            PolicyConfig[]
+  changeLogs          ProductChangeLog[]
+  externalSkuMappings ExternalSkuMapping[]
+  costVersions        CostVersion[]
+  featureSnapshots    ProductFeatureSnapshot[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, brandId, categoryId])
+}
+
+model Commodity {
+  id             String @id @default(uuid()) @db.Uuid
+  tenantId       String @db.Uuid
+  productId      String @db.Uuid
+  marketId       String @db.Uuid
+  language       String
+  title          String
+  bulletPoints   Json?
+  lifecycleStage String @default("NEW")
+
+  // --- Knowledge Graph & Localization Fields ---
+  localBaseCost        Decimal? @db.Decimal(14, 2)
+  localMsrp            Decimal? @db.Decimal(14, 2)
+  targetMargin         Decimal? @db.Decimal(5, 2)
+  localDimensions      Json?
+  hsCode               String?
+  routingWarehouseId   String?  @db.Uuid
+  semanticSynonyms     String[] @default([])
+  warrantyPeriodMonths Int?
+  localSupportContact  String?
+  complianceDocuments  Json?
+  // ---------------------------------------------
+
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product          Product                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  market           Market                 @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  routingWarehouse Warehouse?             @relation(fields: [routingWarehouseId], references: [id])
+  listings         Listing[]
+  snapshots        PerformanceSnapshot[]
+  media            CommodityMedia[]
+  // Portal
+  warranties       WarrantyRegistration[]
+  supportCases     SupportCase[]
+  consumerFaqs     ConsumerFAQ[]
+  productFeedbacks ProductFeedback[]
+  qrScanEvents     QRScanEvent[]
+
+  @@unique([productId, marketId, language])
+  @@index([tenantId, marketId])
+}
+
+model Listing {
+  id                        String                   @id @default(uuid()) @db.Uuid
+  tenantId                  String                   @db.Uuid
+  commodityId               String?                  @db.Uuid // nullable for unmapped listings
+  platformId                String                   @db.Uuid
+  externalListingId         String
+  title                     String
+  isPrimary                 Boolean                  @default(false)
+  status                    ListingStatus            @default(DRAFT)
+  // Fulfillment: pick one
+  platformFulfillmentModeId String?                  @db.Uuid
+  thirdPartyLogisticsId     String?                  @db.Uuid
+  // Origin & Mapping
+  origin                    String                   @default("system") // "system" | "platform_import" | "manual_entry"
+  mappingStatus             String                   @default("mapped") // "unmapped" | "ai_suggested" | "mapped" | "rejected"
+  rawPlatformData           Json?
+  mappedBy                  String?
+  mappedAt                  DateTime?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  tenant                    Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  commodity                 Commodity?               @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  platform                  Platform                 @relation(fields: [platformId], references: [id], onDelete: Restrict)
+  platformFulfillmentMode   PlatformFulfillmentMode? @relation(fields: [platformFulfillmentModeId], references: [id])
+  thirdPartyLogistics       ThirdPartyLogistics?     @relation(fields: [thirdPartyLogisticsId], references: [id])
+  snapshots                 PerformanceSnapshot[]
+
+  @@unique([platformId, externalListingId])
+  @@index([tenantId, platformId, mappingStatus])
+  @@index([commodityId, platformId])
+}
+
+model PerformanceSnapshot {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  productId      String    @db.Uuid
+  commodityId    String    @db.Uuid
+  listingId      String    @db.Uuid
+  platform       String
+  market         String
+  brand          String
+  category       String
+  fulfillment    String
+  snapshotDate   DateTime  @db.Date
+  impressions    Int       @default(0)
+  clicks         Int       @default(0)
+  spend          Decimal   @db.Decimal(14, 2)
+  sales          Decimal   @db.Decimal(14, 2)
+  orders         Int       @default(0)
+  normalizedRoas Decimal   @db.Decimal(10, 4)
+  createdAt      DateTime  @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  commodity      Commodity @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  listing        Listing   @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  @@unique([listingId, snapshotDate])
+  @@index([tenantId, platform, market, brand, category, fulfillment, snapshotDate])
+  @@index([tenantId, snapshotDate])
+}
+
+model AgentExecutionLog {
+  id               String            @id @default(uuid()) @db.Uuid
+  tenantId         String            @db.Uuid
+  intentId         String            @unique
+  domain           String
+  action           String
+  targetKey        String?
+  riskLevel        RiskLevel
+  reasoningChain   Json
+  policySnapshotId String?           @db.Uuid
+  status           String
+  startedAt        DateTime
+  finishedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  policySnapshot   PolicySnapshot?   @relation(fields: [policySnapshotId], references: [id], onDelete: SetNull)
+  receipt          ExecutionReceipt?
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, targetKey, createdAt])
+}
+
+model ExecutionReceipt {
+  id                String            @id @default(uuid()) @db.Uuid
+  tenantId          String            @db.Uuid
+  executionLogId    String            @unique @db.Uuid
+  intentId          String
+  platform          String
+  executionId       String
+  status            String // "SUCCESS" | "FAILED"
+  rollbackSupported Boolean           @default(false)
+  rawResponse       Json?
+  createdAt         DateTime          @default(now())
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  executionLog      AgentExecutionLog @relation(fields: [executionLogId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([intentId])
+}
+
+model AgentExperience {
+  id                String                      @id @default(uuid()) @db.Uuid
+  tenantId          String                      @db.Uuid
+  traceId           String
+  intentType        String
+  intentDomain      String
+  platform          String
+  market            String
+  categoryId        String?
+  observeSnapshot   Json
+  orientAnalysis    Json
+  decideRationale   Json
+  actIntent         Json
+  executionStatus   String
+  executionReceipt  Json?
+  outcomeMetrics    Json?
+  qualityScore      Float?
+  scoreBreakdown    Json?
+  contextEmbedding  Unsupported("vector(384)")?
+  distilled         Boolean                     @default(false)
+  createdAt         DateTime                    @default(now())
+  outcomeMeasuredAt DateTime?
+  tenant            Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, intentDomain])
+  @@index([platform, market])
+  @@index([createdAt(sort: Desc)])
+  @@index([distilled])
+}
+
+model ApprovalQueue {
+  id         String         @id @default(uuid()) @db.Uuid
+  tenantId   String         @db.Uuid
+  intentId   String         @unique
+  domain     String
+  action     String
+  riskScore  Decimal        @db.Decimal(5, 4)
+  reason     String?
+  status     ApprovalStatus @default(PENDING)
+  reviewerId String?
+  reviewedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  tenant     Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status, createdAt])
+}
+
+model PolicyConfig {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String?   @db.Uuid
+  brandId       String?   @db.Uuid
+  productId     String?   @db.Uuid
+  policyKey     String
+  policyValue   Json
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  brand         Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  product       Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, brandId, productId, policyKey])
+  @@index([tenantId, brandId, productId, policyKey, effectiveFrom(sort: Desc)])
+}
+
+model PolicySnapshot {
+  id        String              @id @default(uuid()) @db.Uuid
+  tenantId  String              @db.Uuid
+  source    String
+  params    Json
+  createdAt DateTime            @default(now())
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  logs      AgentExecutionLog[]
+
+  @@index([tenantId, createdAt])
+}
+
+model RuleSet {
+  id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @db.Uuid
+  name          String
+  description   String?
+  language      String        @default("zh-CN")
+  status        RuleSetStatus @default(DRAFT)
+  activeVersion Int?
+  createdBy     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  versions      RuleVersion[]
+
+  @@index([tenantId, status, updatedAt])
+}
+
+model RuleVersion {
+  id            String    @id @default(uuid()) @db.Uuid
+  ruleSetId     String    @db.Uuid
+  version       Int
+  changeSummary String?
+  createdBy     String
+  rules         Json
+  conflicts     Json?
+  suggestions   Json?
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+  ruleSet       RuleSet   @relation(fields: [ruleSetId], references: [id], onDelete: Restrict)
+
+  @@unique([ruleSetId, version])
+  @@index([ruleSetId, createdAt])
+}
+
+model RuleConflictRecord {
+  id            String               @id @default(uuid()) @db.Uuid
+  tenantId      String               @db.Uuid
+  ruleSetId     String?              @db.Uuid
+  ruleVersionId String?              @db.Uuid
+  conflictType  RuleConflictType
+  severity      RuleConflictSeverity
+  title         String
+  detail        String
+  payload       Json?
+  ignored       Boolean              @default(false)
+  ignoredReason String?
+  createdAt     DateTime             @default(now())
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([ruleSetId])
+  @@index([ruleVersionId])
+}
+
+model RuleSuggestionRecord {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  ruleSetId      String?  @db.Uuid
+  ruleVersionId  String?  @db.Uuid
+  suggestionType String
+  title          String
+  detail         String
+  rationale      Json?
+  applied        Boolean  @default(false)
+  ignored        Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([ruleSetId])
+  @@index([ruleVersionId])
+}
+
+model RequestNonce {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  nonce     String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, nonce])
+  @@index([tenantId, createdAt])
+}
+
+model SecurityAuditEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  eventType String
+  severity  String
+  details   Json?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, eventType, createdAt])
+  @@index([tenantId, createdAt])
+}
+
+// ============================================
+// MDM — Tenant Business Primitives
+// ============================================
+
+model Market {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @db.Uuid
+  code        String // "US", "CA", "EU"
+  name        String // "United States", "Canada"
+  currency    String           @default("USD")
+  timezone    String           @default("America/New_York")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  languages   MarketLanguage[]
+  commodities Commodity[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model MarketLanguage {
+  id        String  @id @default(uuid()) @db.Uuid
+  marketId  String  @db.Uuid
+  language  String // "EN", "SP", "FR"
+  isDefault Boolean @default(false)
+  market    Market  @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([marketId, language])
+}
+
+model Platform {
+  id               String                    @id @default(uuid()) @db.Uuid
+  tenantId         String                    @db.Uuid
+  code             String // "amazon-us", "walmart", "shopify"
+  name             String // "Amazon US", "Walmart Marketplace"
+  apiType          String // "SP-API", "Walmart-API", "Shopify-Admin", "CommerceHub-EDI"
+  apiCredentials   Json? // encrypted JSON
+  apiStatus        String                    @default("disconnected") // "connected" | "disconnected" | "error"
+  lastSyncAt       DateTime?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  fulfillmentModes PlatformFulfillmentMode[]
+  listings         Listing[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model PlatformFulfillmentMode {
+  id         String    @id @default(uuid()) @db.Uuid
+  platformId String    @db.Uuid
+  code       String // "FBA", "FBM", "WFS"
+  name       String // "Fulfillment by Amazon"
+  platform   Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  listings   Listing[]
+
+  @@unique([platformId, code])
+}
+
+model Category {
+  id               String                    @id @default(uuid()) @db.Uuid
+  tenantId         String                    @db.Uuid
+  code             String // "electronics", "kitchen-appliances"
+  name             String
+  definition       String? // Optional natural language definition for AI Agent
+  parentId         String?                   @db.Uuid // Self-referencing tree
+  createdAt        DateTime                  @default(now())
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  parent           Category?                 @relation("CategoryTree", fields: [parentId], references: [id])
+  children         Category[]                @relation("CategoryTree")
+  products         Product[]
+  brandCategories  BrandCategory[]
+  attributeSchemas CategoryAttributeSchema[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, parentId])
+}
+
+model CategoryAttributeSchema {
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @db.Uuid
+  fieldKey   String // "recipeCount", "voltage"
+  fieldLabel String // "菜谱数量", "电压规格"
+  fieldType  String // "string" | "number" | "boolean" | "enum" | "string[]"
+  enumValues String[] @default([]) // ["110V", "220V"] (enum type only)
+  required   Boolean  @default(false)
+  aiHint     String? // Hint for AI Agent to understand the field
+  sortOrder  Int      @default(0)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, fieldKey])
+}
+
+model BrandCategory {
+  id         String   @id @default(uuid()) @db.Uuid
+  brandId    String   @db.Uuid
+  categoryId String   @db.Uuid
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, categoryId])
+}
+
+model ThirdPartyLogistics {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  code           String // "shipbob-east"
+  name           String // "ShipBob East Coast"
+  provider       String // "shipbob" | "deliverr"
+  apiCredentials Json? // encrypted JSON
+  apiStatus      String    @default("disconnected")
+  lastSyncAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  listings       Listing[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Warehouse {
+  id                 String      @id @default(uuid()) @db.Uuid
+  tenantId           String      @db.Uuid
+  code               String // "WH-SZ-01"
+  name               String // "深圳中转仓"
+  type               String      @default("transit") // "transit" | "overseas" | "bonded"
+  country            String      @default("CN")
+  address            String?
+  capacity           Int? // cubic meters or pallet count
+  apiCredentials     Json? // WMS API credentials, encrypted
+  apiStatus          String      @default("disconnected")
+  lastSyncAt         DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  routingCommodities Commodity[] // Reverse relation for routingWarehouseId in Commodity
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model Supplier {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @db.Uuid
+  code         String // "SUP-DONGGUAN-01"
+  name         String // "东莞XX电子有限公司"
+  contactName  String?
+  contactEmail String?
+  leadTimeDays Int? // Average days from PO → delivery
+  moq          Int? // Minimum order quantity
+  currency     String    @default("CNY")
+  country      String    @default("CN")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  products     Product[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+model ErpSystem {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  code           String // "netsuite-prod"
+  name           String // "NetSuite Production"
+  erpType        String // "netsuite" | "sap" | "quickbooks"
+  apiCredentials Json? // encrypted, fields vary by erpType
+  apiStatus      String    @default("disconnected")
+  lastSyncAt     DateTime?
+  syncDirection  String    @default("bidirectional") // "inbound" | "outbound" | "bidirectional"
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
+// ============================================
+// MDM — Content & Media
+// ============================================
+
+model CommodityMedia {
+  id          String    @id @default(uuid()) @db.Uuid
+  commodityId String    @db.Uuid
+  type        String // "usage" | "unboxing" | "repair" | "assembly" | "recipe_demo" | "review"
+  title       String
+  url         String // YouTube/Vimeo/self-hosted URL
+  platform    String    @default("youtube")
+  language    String
+  aiSummary   String? // AI-generated video summary for customer service
+  duration    Int? // seconds
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  commodity   Commodity @relation(fields: [commodityId], references: [id], onDelete: Cascade)
+
+  @@index([commodityId, type])
+}
+
+// ============================================
+// MDM — Audit & Mapping
+// ============================================
+
+model ProductChangeLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  productId String   @db.Uuid
+  field     String
+  oldValue  Json?
+  newValue  Json?
+  changedBy String // "user:admin@brand.com" | "system:amazon-sync"
+  source    String // "manual" | "amazon-catalog-sync" | "walmart-item-feed"
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, productId, createdAt])
+}
+
+model ExternalSkuMapping {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  productId     String?   @db.Uuid // nullable — unmapped records
+  sourceType    String // "erp" | "wms" | "supplier"
+  sourceId      String    @db.Uuid // ErpSystem.id or Warehouse.id
+  externalSku   String // SKU/Item number in external system
+  externalName  String?
+  rawData       Json?
+  mappingStatus String    @default("unmapped") // "unmapped" | "ai_suggested" | "mapped" | "rejected"
+  mappedBy      String?
+  mappedAt      DateTime?
+  createdAt     DateTime  @default(now())
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product       Product?  @relation(fields: [productId], references: [id])
+
+  @@unique([tenantId, sourceType, sourceId, externalSku])
+  @@index([tenantId, mappingStatus])
+}
+
+model ExternalIdMapping {
+  id                        String           @id @default(uuid()) @db.Uuid
+  tenantId                  String           @db.Uuid
+  entityType                EntityType
+  globalId                  String           @db.Uuid
+  sourceSystem              String
+  externalId                String
+  externalSubId             String?
+  status                    MappingStatus    @default(PENDING)
+  confidenceScore           Decimal?         @db.Decimal(5, 4)
+  effectiveFrom             DateTime         @default(now())
+  effectiveTo               DateTime?
+  createdBy                 String           @default("system")
+  approvedBy                String?
+  approvedAt                DateTime?
+  revokedBy                 String?
+  revokedAt                 DateTime?
+  reason                    String?
+  candidatePayload          Json?
+  rawPayload                Json?
+  version                   Int              @default(1)
+  mappingConfidencePassedAt DateTime?
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  tenant                    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  histories                 MappingHistory[]
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, sourceSystem, entityType, status, createdAt])
+  @@index([tenantId, entityType, globalId, status])
+  @@index([tenantId, effectiveFrom, effectiveTo])
+}
+
+model MappingHistory {
+  id        String            @id @default(uuid()) @db.Uuid
+  mappingId String            @db.Uuid
+  tenantId  String            @db.Uuid
+  action    String
+  oldStatus MappingStatus?
+  newStatus MappingStatus?
+  changedBy String
+  reason    String?
+  metadata  Json?
+  createdAt DateTime          @default(now())
+  mapping   ExternalIdMapping @relation(fields: [mappingId], references: [id], onDelete: Restrict)
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, createdAt])
+  @@index([mappingId, createdAt])
+}
+
+model CostVersion {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  productGlobalId String    @db.Uuid
+  purchaseCost    Decimal?  @db.Decimal(14, 2)
+  shippingCost    Decimal?  @db.Decimal(14, 2)
+  fbaFee          Decimal?  @db.Decimal(14, 2)
+  otherCost       Decimal?  @db.Decimal(14, 2)
+  currency        String    @default("USD")
+  effectiveFrom   DateTime
+  effectiveTo     DateTime?
+  status          String    @default("ACTIVE")
+  sourceSystem    String?
+  sourceRef       String?
+  changedBy       String
+  reason          String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product         Product   @relation(fields: [productGlobalId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, productGlobalId, effectiveFrom])
+}
+
+// ============================================
+// Evolution Layer — Distilled Patterns
+// ============================================
+
+enum PatternGrade {
+  SHADOW
+  SUGGEST
+  AUTO_LOW
+  AUTO_FULL
+}
+
+model DistilledPattern {
+  id                  String               @id @default(uuid()) @db.Uuid
+  tenantId            String               @db.Uuid
+  intentDomain        String
+  platform            String?
+  market              String?
+  lifecycleStage      String?
+  name                String
+  description         String?
+  ruleTree            Json
+  confidence          Float
+  sampleCount         Int
+  grade               PatternGrade         @default(SHADOW)
+  consecutiveFailures Int                  @default(0)
+  lastValidatedAt     DateTime?
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  applications        PatternApplication[]
+
+  @@index([tenantId, intentDomain, isActive])
+  @@index([tenantId, grade])
+}
+
+model PatternApplication {
+  id           String           @id @default(uuid()) @db.Uuid
+  tenantId     String           @db.Uuid
+  patternId    String           @db.Uuid
+  experienceId String?          @db.Uuid
+  traceId      String
+  applied      Boolean          @default(false)
+  outcome      String?
+  createdAt    DateTime         @default(now())
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  pattern      DistilledPattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, patternId, createdAt])
+  @@index([patternId, outcome])
+}
+
+// ============================================
+// Knowledge Layers — Three-Layer Isolation
+// ============================================
+
+model KnowledgeLayerA {
+  id                   String   @id @default(uuid()) @db.Uuid
+  domain               String
+  key                  String
+  title                String
+  content              Json
+  source               String   @default("manual")
+  version              Int      @default(1)
+  requiresDualApproval Boolean  @default(true)
+  approvedBy           String[] @default([])
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([domain, key])
+  @@index([domain, isActive])
+}
+
+model KnowledgeLayerB {
+  id                  String   @id @default(uuid()) @db.Uuid
+  industryCategory    String
+  metricKey           String
+  metricValue         Float
+  sampleSize          Int
+  contributingTenants Int      @default(0)
+  noiseApplied        Boolean  @default(false)
+  aggregationMethod   String   @default("median")
+  periodStart         DateTime
+  periodEnd           DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([industryCategory, metricKey, periodStart])
+  @@index([industryCategory, metricKey])
+  @@index([periodStart, periodEnd])
+}
+
+// ============================================
+// Feature Store — AI 决策层只读特征快照
+// ============================================
+
+model ProductFeatureSnapshot {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @db.Uuid
+  productGlobalId   String   @db.Uuid
+  snapshotDate      DateTime @db.Date
+  totalSales        Decimal? @db.Decimal(14, 2)
+  totalAdSpend      Decimal? @db.Decimal(14, 2)
+  profit            Decimal? @db.Decimal(14, 2)
+  inventory         Int?
+  acos              Decimal? @db.Decimal(5, 4)
+  roas              Decimal? @db.Decimal(8, 4)
+  dataQualityScore  Float    @default(0)
+  mappingConfidence Float    @default(0)
+  sourceMapping     String?
+  market            String?
+  platform          String?
+  featureJson       Json?
+  writtenBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  product           Product  @relation(fields: [productGlobalId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productGlobalId, snapshotDate])
+  @@index([tenantId, productGlobalId, snapshotDate(sort: Desc)])
+  @@index([tenantId, snapshotDate])
+  @@index([tenantId, market, platform, snapshotDate(sort: Desc)])
+}
+
+// ============================================
+// Feature Store — Decision & Reward Logs
+// ============================================
+
+model DecisionLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  entityHash      String
+  entityType      String   // Denormalized from entityHash for query convenience.
+                           // MUST equal split_part(entityHash,':',1). Always set via
+                           // buildEntityHash() in feature-routes.ts to guarantee consistency.
+  agentId         String
+  decisionType    String
+  inputFeatures   Json?
+  outputAction    Json
+  confidenceScore Float?
+  decidedAt       DateTime @default(now())
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, entityHash, decidedAt(sort: Desc)])
+  @@index([tenantId, agentId, decidedAt])
+  @@index([tenantId, decisionType, decidedAt])
+}
+
+model RewardLog {
+  id                     String   @id @default(uuid()) @db.Uuid
+  tenantId               String   @db.Uuid
+  decisionLogId          String?  @db.Uuid
+  entityHash             String
+  rewardType             String
+  rewardValue            Float
+  observedAt             DateTime
+  attributionWindowHours Int      @default(24)
+  rawSignal              Json?
+  createdAt              DateTime @default(now())
+  tenant                 Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, entityHash, observedAt(sort: Desc)])
+  @@index([tenantId, decisionLogId])
+  @@index([tenantId, rewardType, observedAt])
+}
+
+// ============================================
+// IAM — Identity & Access Management
+// ============================================
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String?
+  tenantId      String         @db.Uuid
+  role          String         @default("viewer") // "system_admin" | "tenant_admin" | "operator" | "supplier" | "viewer"
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  scopes        UserScope[]
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId, role])
+}
+
+model UserScope {
+  id         String   @id @default(cuid())
+  userId     String
+  tenantId   String   @db.Uuid
+  scopeType  String // "brand" | "category" | "platform" | "market"
+  scopeValue String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, tenantId, scopeType, scopeValue])
+  @@index([userId, tenantId])
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tenantId     String    @db.Uuid
+  tokenHash    String    @unique
+  familyId     String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([userId, familyId])
+  @@index([tenantId])
+  @@index([expiresAt])
+}
+
+// ============================================
+// Portal — Brand Support Portal Models
+// ============================================
+
+model BrandPortalConfig {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  brandId        String   @unique @db.Uuid
+  customDomain   String?  @unique
+  themeId        String   @default("editorial")
+  logoUrl        String?
+  faviconUrl     String?
+  seoTitle       String?
+  seoDescription String?
+  primaryColor   String?
+  welcomeMessage String?
+  supportEmail   String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  brand          Brand    @relation(fields: [brandId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+}
+
+model PortalConsumer {
+  id            String                 @id @default(uuid()) @db.Uuid
+  tenantId      String                 @db.Uuid
+  brandId       String                 @db.Uuid
+  email         String
+  emailVerified Boolean                @default(false)
+  name          String?
+  phone         String?
+  locale        String                 @default("en")
+  lastLoginAt   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  tenant        Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  brand         Brand                  @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  warranties    WarrantyRegistration[]
+  supportCases  SupportCase[]
+  feedbacks     ProductFeedback[]
+
+  @@unique([tenantId, brandId, email])
+  @@index([tenantId, brandId])
+}
+
+model WarrantyRegistration {
+  id              String         @id @default(uuid()) @db.Uuid
+  tenantId        String         @db.Uuid
+  consumerId      String         @db.Uuid
+  commodityId     String         @db.Uuid
+  serialNumber    String
+  purchaseDate    DateTime       @db.Date
+  purchaseChannel String
+  expiryDate      DateTime       @db.Date
+  status          String         @default("active")
+  activatedAt     DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  consumer        PortalConsumer @relation(fields: [consumerId], references: [id], onDelete: Restrict)
+  commodity       Commodity      @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, serialNumber])
+  @@index([tenantId, consumerId])
+  @@index([commodityId])
+}
+
+model SupportCase {
+  id                 String          @id @default(uuid()) @db.Uuid
+  tenantId           String          @db.Uuid
+  consumerId         String?         @db.Uuid
+  commodityId        String          @db.Uuid
+  channel            String          @default("portal")
+  issueType          String?
+  status             String          @default("open")
+  priority           String          @default("normal")
+  agentConfidence    Float?
+  assignedTo         String?
+  resolvedAt         DateTime?
+  closedAt           DateTime?
+  knowledgeWriteback String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  tenant             Tenant          @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  consumer           PortalConsumer? @relation(fields: [consumerId], references: [id], onDelete: SetNull)
+  commodity          Commodity       @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+  messages           CaseMessage[]
+  mediaAnalyses      MediaAnalysis[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, status, assignedTo])
+  @@index([tenantId, consumerId])
+  @@index([commodityId])
+}
+
+model CaseMessage {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @db.Uuid
+  caseId      String      @db.Uuid
+  role        String
+  contentType String      @default("text")
+  content     String
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case        SupportCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([tenantId])
+}
+
+model MediaAnalysis {
+  id              String      @id @default(uuid()) @db.Uuid
+  tenantId        String      @db.Uuid
+  caseId          String      @db.Uuid
+  sourceType      String
+  analysisResult  Json
+  keyFrameUrls    String[]    @default([])
+  confidence      Float
+  originalFileRef String?
+  originalDeleted Boolean     @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  case            SupportCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+  @@index([tenantId])
+}
+
+model ConsumerFAQ {
+  id          String     @id @default(uuid()) @db.Uuid
+  tenantId    String     @db.Uuid
+  brandId     String     @db.Uuid
+  commodityId String?    @db.Uuid
+  question    String
+  answer      String
+  category    String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  brand       Brand      @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  commodity   Commodity? @relation(fields: [commodityId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, brandId, commodityId])
+}
+
+model ProductFeedback {
+  id           String         @id @default(uuid()) @db.Uuid
+  tenantId     String         @db.Uuid
+  consumerId   String         @db.Uuid
+  commodityId  String         @db.Uuid
+  feedbackType String
+  title        String
+  detail       String
+  priority     String         @default("nice_to_have")
+  status       String         @default("submitted")
+  agentSummary String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  consumer     PortalConsumer @relation(fields: [consumerId], references: [id], onDelete: Restrict)
+  commodity    Commodity      @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, commodityId, feedbackType])
+}
+
+model QRScanEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  commodityId String    @db.Uuid
+  source      String
+  userAgent   String?
+  ipCountry   String?
+  scannedAt   DateTime  @default(now())
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  commodity   Commodity @relation(fields: [commodityId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, commodityId, source])
+  @@index([scannedAt])
+}
+
+// ============================================
+// Harness — AI Governance Runtime
+// ============================================
+
+enum KnowledgeStatus {
+  ACTIVE
+  DECAYING
+  DORMANT
+  ARCHIVED
+}
+
+enum FeedbackPriorityClass {
+  SAFETY
+  EXPERIENCE
+}
+
+model KnowledgeEntry {
+  id           String  @id @default(uuid()) @db.Uuid
+  tenantId     String  @db.Uuid
+  source       String // "writeback" | "faq" | "manual" | "experience"
+  category     String // product/issue type (Agent auto-classified + human confirmed)
+  content      String
+  sourceRef    String? // originating case/FAQ ID
+  supersededBy String? @db.Uuid
+
+  status          KnowledgeStatus @default(ACTIVE)
+  effectiveWeight Float           @default(1.0)
+  decayRate       Float           @default(0.01)
+  usageCount      Int             @default(0)
+  impactScore     Float           @default(0)
+  lastUsedAt      DateTime?
+  lastReviewedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status, effectiveWeight(sort: Desc)])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, category])
+  @@index([tenantId, source])
+  @@index([tenantId, source, sourceRef])
+  @@index([tenantId, source, createdAt])
+  @@index([tenantId, source, lastUsedAt])
+}
+
+model FeedbackSignal {
+  id            String                @id @default(uuid()) @db.Uuid
+  tenantId      String                @db.Uuid
+  type          String // "accept" | "reject" | "modify" | "rating" | "resolved" | "system_alert"
+  sourceRole    String // "operator" | "tenant_admin" | "consumer" | "system"
+  priorityClass FeedbackPriorityClass @default(EXPERIENCE)
+  caseId        String?               @db.Uuid
+  intentId      String?
+  agentAction   String
+  reason        String?
+  correction    String?
+  rating        Int?
+  metadata      Json?
+  createdAt     DateTime              @default(now())
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, sourceRole, agentAction, intentId])
+  @@index([tenantId, type, createdAt])
+  @@index([tenantId, type, createdAt, agentAction])
+  @@index([tenantId, caseId])
+  @@index([tenantId, intentId])
+}
+
+model ConfidenceLedger {
+  id          String  @id @default(uuid()) @db.Uuid
+  tenantId    String  @db.Uuid
+  agentDomain String  @default("portal") // "portal" | "ads"
+  intentId    String?
+  caseId      String? @db.Uuid
+  agentAction String
+
+  confidenceBefore Float
+  confidenceAfter  Float?
+  knowledgeUsed    String[] @default([])
+  knowledgeWeights Float[]  @default([])
+  ruleTriggered    String[] @default([])
+  ruleResult       String // "pass" | "soft_warning" | "hard_rejected"
+  authorityLevel   String // "auto" | "confirm" | "block"
+
+  executionResult    String // "success" | "failed" | "escalated" | "rejected"
+  executionLatencyMs Int?
+
+  feedbackType       String? // "accept" | "reject" | "modify" (async fill)
+  feedbackReason     String?
+  feedbackSourceRole String?
+  feedbackAt         DateTime?
+
+  pipelineVersion     String  @default("1.0")
+  tenantMaturityScore Float?
+  agentAutonomyLevel  String?
+
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  // GIN index on knowledgeUsed: see migration 20260303100000_harness_ledger_gin_and_indexes
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, agentDomain, createdAt])
+  @@index([tenantId, agentAction, createdAt])
+  @@index([tenantId, caseId])
+}
+
+enum AutonomyLevel {
+  GUIDED
+  ASSISTED
+  SUPERVISED
+  AUTONOMOUS
+}
+
+model TenantMaturity {
+  id               String         @id @default(uuid()) @db.Uuid
+  tenantId         String         @unique @db.Uuid
+  maturityScore    Float          @default(0)
+  autonomyLevel    AutonomyLevel  @default(GUIDED)
+  autonomyOverride AutonomyLevel?
+
+  knowledgeScore Float @default(0)
+  ruleScore      Float @default(0)
+  feedbackScore  Float @default(0)
+  historyScore   Float @default(0)
+
+  escalationThreshold Float @default(0.9)
+  autoExecuteLimit    Float @default(0)
+
+  lastCalculatedAt DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+}
+
+model ExchangeRateConfig {
+  id           String   @id @default(cuid())
+  provider     String
+  apiKey       String
+  apiUrl       String?
+  baseCurrency String   @default("USD")
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ExchangeRateDailySnapshot {
+  id             String   @id @default(cuid())
+  date           DateTime @db.Date
+  baseCurrency   String
+  targetCurrency String
+  rate           Float
+  source         String
+  fetchedAt      DateTime @default(now())
+
+  @@unique([date, baseCurrency, targetCurrency])
+  @@index([date])
+  @@index([targetCurrency])
+  @@index([baseCurrency, targetCurrency])
+}
+
+model ExchangeRateMonthlyAvg {
+  id             String   @id @default(cuid())
+  year           Int
+  month          Int
+  baseCurrency   String
+  targetCurrency String
+  avgRate        Float
+  minRate        Float
+  maxRate        Float
+  sampleCount    Int
+  calculatedAt   DateTime @default(now())
+
+  @@unique([year, month, baseCurrency, targetCurrency])
+  @@index([year, month])
+  @@index([targetCurrency])
+}

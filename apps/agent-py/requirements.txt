@@ -1,0 +1,6 @@
+fastapi==0.116.1
+uvicorn==0.35.0
+langgraph==0.6.6
+langchain-core==0.3.76
+pydantic==2.11.7
+psycopg[binary]==3.2.9
