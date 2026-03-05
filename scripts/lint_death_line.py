@@ -19,6 +19,10 @@ COGNITION_PATH = "apps/agent-py/src"
 # wire together the graph runtime and are not reasoning nodes themselves.
 SKIP_FILES: set[str] = {"main.py"}
 
+# Subdirectories that ARE the execution layer — they are allowed to import
+# platform/DB/HTTP clients by design and must be excluded from the Death Line.
+SKIP_DIRS: set[str] = {"tools", "platforms"}
+
 # Patterns that indicate ASIN/SKU/ERP Code used as entity key (warning, non-blocking)
 ENTITY_KEY_WARNING_PATTERNS = [
     # dict key patterns: {"ASIN": ..., 'SKU': ...} or key="ASIN"
@@ -68,7 +72,8 @@ def check_file(filepath):
 def main():
     total_errors = 0
     total_warnings = 0
-    for root, _, files in os.walk(COGNITION_PATH):
+    for root, dirs, files in os.walk(COGNITION_PATH):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for file in files:
             if file.endswith(".py") and file not in SKIP_FILES:
                 rel_path = os.path.join(root, file)
