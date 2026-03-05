@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_DB: ai_ecom
           POSTGRES_USER: postgres
@@ -107,6 +107,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
         run: pnpm db:generate
+      - name: Enable pgvector extension
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -c "CREATE EXTENSION IF NOT EXISTS vector;"
       - name: Run Prisma migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
