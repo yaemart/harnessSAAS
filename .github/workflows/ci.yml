@@ -59,6 +59,8 @@ jobs:
 
   phase1-harness:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -125,11 +127,29 @@ jobs:
       - name: Apply RLS governance migration
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0003_rls_governance_tables.sql
       - name: Seed harness data
+        id: seed
+        continue-on-error: true
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
         run: |
           printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > apps/api/.env
-          pnpm --filter @apps/api seed:harness
+          pnpm --filter @apps/api seed:harness 2>&1 | tee /tmp/seed.log
+      - name: Post seed log
+        if: steps.seed.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          BODY=$(jq -Rs '.' < /tmp/seed.log)
+          curl -sf -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/commits/$SHA/comments" \
+            -d "{\"body\": $BODY}"
+      - name: Fail if seed failed
+        if: steps.seed.outcome == 'failure'
+        run: exit 1
       - name: Install Python test deps
         run: pip install pytest psycopg2-binary redis boto3
       - name: Run API integration tests
