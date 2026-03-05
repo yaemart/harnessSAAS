@@ -112,7 +112,9 @@ jobs:
       - name: Run Prisma migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
-        run: pnpm db:migrate
+        run: |
+          printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > packages/database/.env
+          pnpm db:migrate
       - name: Apply setup-app-user.sql
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
       - name: Apply week1 RLS hardening
