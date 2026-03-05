@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () =>
       accessToken && user
         ? { authorization: `Bearer ${accessToken}`, 'x-tenant-id': user.tenantId }
-        : {},
+        : ({} as Record<string, string>),
     [accessToken, user?.tenantId]
   );
 
