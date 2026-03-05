@@ -172,7 +172,9 @@ class TestSeedIdempotency:
             count_before = cur.fetchone()[0]
         assert count_before >= 2, f"Tenant count 过少: {count_before}，seed 可能未执行"
 
-        db_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/ai_ecom")
+        db_url = os.environ.get("DATABASE_ADMIN_URL",
+                                os.environ.get("DATABASE_URL",
+                                               "postgresql://postgres:postgres@localhost:5432/ai_ecom"))
         result = subprocess.run(
             ["pnpm", "--filter", "@apps/api", "seed:harness"],
             capture_output=True,
