@@ -59,6 +59,8 @@ jobs:
 
   phase1-harness:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -135,7 +137,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           BODY=$(jq -Rs '.' < /tmp/migrate.log)
-          curl -s -X POST \
+          curl -sf -X POST \
             -H "Authorization: token $GH_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/$REPO/commits/$SHA/comments" \
