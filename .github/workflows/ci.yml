@@ -1,0 +1,138 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "codex/**"]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm db:generate
+      - name: TypeScript typecheck
+        run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Python dependencies
+        working-directory: apps/agent-py
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run Python Agent tests
+        run: python -m pytest apps/agent-py/test_sovereign_flow.py -x -q
+
+  death-line:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run Death Line Linter
+        run: python scripts/lint_death_line.py
+      - name: Run import-linter
+        working-directory: apps/agent-py
+        run: |
+          pip install import-linter
+          lint-imports
+
+  phase1-harness:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ai_ecom
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio-srv \
+            --network host \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:9000/minio/health/live && break || sleep 2
+          done
+      - name: DB init (Prisma migrate + RLS hardening)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
+        run: |
+          pnpm db:generate
+          pnpm db:migrate
+          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f scripts/setup-app-user.sql
+          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f packages/database/migrations/0001_week1_hardening.sql
+          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f packages/database/migrations/0002_tenant_plan.sql
+          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f packages/database/migrations/0003_rls_governance_tables.sql
+      - name: Seed harness data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
+        run: |
+          printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > apps/api/.env
+          pnpm --filter @apps/api seed:harness
+      - name: Install Python test deps
+        run: pip install pytest psycopg2-binary redis boto3
+      - name: Run Phase 1 Harness (12 items)
+        env:
+          DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
+          DATABASE_URL: postgresql://app_user:app_user_password@localhost:5432/ai_ecom
+          REDIS_URL: redis://localhost:6379
+          MINIO_ENDPOINT: http://localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+        run: |
+          pytest tests/test_phase1_harness.py -v 2>&1 | tee result.txt
+          grep "12 passed" result.txt

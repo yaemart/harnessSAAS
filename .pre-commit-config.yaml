@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: TypeScript typecheck
+        entry: pnpm typecheck
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ruff
+        name: Ruff lint
+        entry: ruff check --fix
+        language: system
+        types: [python]
+        stages: [pre-commit]
+      - id: death-line
+        name: Death Line Linter
+        entry: python scripts/lint_death_line.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
