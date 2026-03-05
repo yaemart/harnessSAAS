@@ -20,8 +20,6 @@ jobs:
           python-version: "3.12"
       - run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
-        env:
-          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
         run: pnpm db:generate
       - name: TypeScript typecheck
         run: pnpm typecheck
