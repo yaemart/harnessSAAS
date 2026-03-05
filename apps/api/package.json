@@ -8,7 +8,8 @@
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.json",
     "lint": "node ../../scripts/noop.mjs",
-    "test": "node --env-file=.env ./node_modules/vitest/vitest.mjs run",
+    "test": "vitest run src/intent-compiler.test.ts",
+    "test:integration": "node --env-file=.env ./node_modules/vitest/vitest.mjs run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "seed:test-data": "tsx --env-file=.env src/seed-test-data.ts",
     "seed:harness": "tsx --env-file=.env src/seed-harness.ts"

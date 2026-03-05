@@ -103,16 +103,22 @@ jobs:
           for i in $(seq 1 15); do
             curl -sf http://localhost:9000/minio/health/live && break || sleep 2
           done
-      - name: DB init (Prisma migrate + RLS hardening)
+      - name: Generate Prisma Client
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
-        run: |
-          pnpm db:generate
-          pnpm db:migrate
-          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f scripts/setup-app-user.sql
-          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f packages/database/migrations/0001_week1_hardening.sql
-          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f packages/database/migrations/0002_tenant_plan.sql
-          psql postgresql://postgres:postgres@localhost:5432/ai_ecom -f packages/database/migrations/0003_rls_governance_tables.sql
+        run: pnpm db:generate
+      - name: Run Prisma migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
+        run: pnpm db:migrate
+      - name: Apply setup-app-user.sql
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
+      - name: Apply week1 RLS hardening
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0001_week1_hardening.sql
+      - name: Apply tenant_plan migration
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0002_tenant_plan.sql
+      - name: Apply RLS governance migration
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0003_rls_governance_tables.sql
       - name: Seed harness data
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
@@ -121,6 +127,10 @@ jobs:
           pnpm --filter @apps/api seed:harness
       - name: Install Python test deps
         run: pip install pytest psycopg2-binary redis boto3
+      - name: Run API integration tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
+        run: pnpm --filter @apps/api test:integration
       - name: Run Phase 1 Harness (12 items)
         env:
           DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
