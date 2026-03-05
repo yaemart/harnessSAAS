@@ -110,9 +110,14 @@ jobs:
       - name: Enable pgvector extension
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -c "CREATE EXTENSION IF NOT EXISTS vector;"
       - name: Run Prisma migrations
+        working-directory: packages/database
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
-        run: pnpm db:migrate
+        run: |
+          echo "--- prisma version ---"
+          npx prisma --version
+          echo "--- migrate deploy ---"
+          npx prisma migrate deploy 2>&1 || { echo "PRISMA_EXIT=$?"; psql "$DATABASE_URL" -c "SELECT * FROM \"_prisma_migrations\" ORDER BY started_at;" 2>/dev/null; exit 1; }
       - name: Apply setup-app-user.sql
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
       - name: Apply week1 RLS hardening
