@@ -59,8 +59,6 @@ jobs:
 
   phase1-harness:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -111,40 +109,13 @@ jobs:
         run: pnpm db:generate
       - name: Enable pgvector extension
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -c "CREATE EXTENSION IF NOT EXISTS vector;"
-      - name: Run Prisma migrations (psql)
-        id: migrate
-        continue-on-error: true
+      - name: Run Prisma migrations
         run: |
           DB="postgresql://postgres:postgres@localhost:5432/ai_ecom"
-          echo "=== Connection test ===" > /tmp/migrate.log
-          psql "$DB" -c "SELECT version();" >> /tmp/migrate.log 2>&1
-          echo "=== Listing migration files ===" >> /tmp/migrate.log
-          ls packages/database/prisma/migrations/*/migration.sql >> /tmp/migrate.log 2>&1
-          echo "=== Applying migrations ===" >> /tmp/migrate.log
-          set +e
           for f in packages/database/prisma/migrations/*/migration.sql; do
-            echo ">>> $f" >> /tmp/migrate.log
-            psql "$DB" -v ON_ERROR_STOP=1 -f "$f" >> /tmp/migrate.log 2>&1
-            rc=$?
-            echo "EXIT=$rc" >> /tmp/migrate.log
-            if [ $rc -ne 0 ]; then exit 1; fi
+            echo ">>> Applying: $f"
+            psql "$DB" -v ON_ERROR_STOP=1 -f "$f"
           done
-      - name: Post migration log
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository }}
-        run: |
-          BODY=$(jq -Rs '.' < /tmp/migrate.log)
-          curl -sf -X POST \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/commits/$SHA/comments" \
-            -d "{\"body\": $BODY}"
-      - name: Fail if migrations failed
-        if: steps.migrate.outcome == 'failure'
-        run: exit 1
       - name: Apply setup-app-user.sql
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
       - name: Apply week1 RLS hardening
