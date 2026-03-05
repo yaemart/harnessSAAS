@@ -105,7 +105,7 @@ CREATE TABLE "AgentExperience" (
     "outcomeMetrics" JSONB,
     "qualityScore" DOUBLE PRECISION,
     "scoreBreakdown" JSONB,
-    "contextEmbedding" vector(384),
+    "contextEmbedding" TEXT,
     "distilled" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "outcomeMeasuredAt" TIMESTAMP(3),
