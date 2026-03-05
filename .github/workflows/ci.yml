@@ -20,6 +20,8 @@ jobs:
           python-version: "3.12"
       - run: pnpm install --frozen-lockfile
       - name: Generate Prisma Client
+        env:
+          DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
         run: pnpm db:generate
       - name: TypeScript typecheck
         run: pnpm typecheck
@@ -114,10 +116,16 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
         run: |
-          echo "--- prisma version ---"
-          npx prisma --version
-          echo "--- migrate deploy ---"
-          npx prisma migrate deploy 2>&1 || { echo "PRISMA_EXIT=$?"; psql "$DATABASE_URL" -c "SELECT * FROM \"_prisma_migrations\" ORDER BY started_at;" 2>/dev/null; exit 1; }
+          set +e
+          pnpm exec prisma migrate deploy 2>&1 | tee /tmp/migrate.log
+          exit_code=${PIPESTATUS[0]}
+          if [ $exit_code -ne 0 ]; then
+            echo "### Prisma Migration Failed (exit $exit_code)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat /tmp/migrate.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit $exit_code
+          fi
       - name: Apply setup-app-user.sql
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
       - name: Apply week1 RLS hardening
