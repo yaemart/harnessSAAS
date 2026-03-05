@@ -159,4 +159,4 @@ ON "PerformanceSnapshot" (
 );
 
 CREATE INDEX IF NOT EXISTS idx_listing_scope
-ON "Listing" ("tenantId", platform, fulfillment, "commodityId");
+ON "Listing" ("tenantId", "platformId", "commodityId");

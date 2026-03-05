@@ -59,8 +59,6 @@ jobs:
 
   phase1-harness:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -120,36 +118,12 @@ jobs:
           done
       - name: Apply setup-app-user.sql
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
-      - name: Apply post-migration SQL
-        id: postsql
-        continue-on-error: true
-        run: |
-          DB="postgresql://postgres:postgres@localhost:5432/ai_ecom"
-          echo "=== 0001_week1_hardening ===" > /tmp/postsql.log
-          psql "$DB" -v ON_ERROR_STOP=1 -f packages/database/migrations/0001_week1_hardening.sql >> /tmp/postsql.log 2>&1
-          echo "EXIT=$?" >> /tmp/postsql.log
-          echo "=== 0002_tenant_plan ===" >> /tmp/postsql.log
-          psql "$DB" -v ON_ERROR_STOP=1 -f packages/database/migrations/0002_tenant_plan.sql >> /tmp/postsql.log 2>&1
-          echo "EXIT=$?" >> /tmp/postsql.log
-          echo "=== 0003_rls_governance ===" >> /tmp/postsql.log
-          psql "$DB" -v ON_ERROR_STOP=1 -f packages/database/migrations/0003_rls_governance_tables.sql >> /tmp/postsql.log 2>&1
-          echo "EXIT=$?" >> /tmp/postsql.log
-      - name: Post SQL log
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.sha }}
-          REPO: ${{ github.repository }}
-        run: |
-          BODY=$(jq -Rs '.' < /tmp/postsql.log)
-          curl -sf -X POST \
-            -H "Authorization: token $GH_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/commits/$SHA/comments" \
-            -d "{\"body\": $BODY}"
-      - name: Fail if post-SQL failed
-        if: steps.postsql.outcome == 'failure'
-        run: exit 1
+      - name: Apply week1 RLS hardening
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0001_week1_hardening.sql
+      - name: Apply tenant_plan migration
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0002_tenant_plan.sql
+      - name: Apply RLS governance migration
+        run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f packages/database/migrations/0003_rls_governance_tables.sql
       - name: Seed harness data
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
