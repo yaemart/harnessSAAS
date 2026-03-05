@@ -75,4 +75,5 @@ export const env = {
   // view_only = 只读 approved_entity_mapping / approved_cost_version
   // legacy    = 读旧字段（过渡期兼容，上线后禁止）
   AI_MAPPING_SOURCE: (process.env.AI_MAPPING_SOURCE ?? 'view_only') as 'view_only' | 'legacy',
+  EXCHANGE_RATE_CRON_ENABLED: (process.env.EXCHANGE_RATE_CRON_ENABLED ?? 'true') === 'true',
 };

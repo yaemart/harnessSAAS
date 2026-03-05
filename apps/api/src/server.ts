@@ -2021,8 +2021,19 @@ const server = serve(
 
 let _exchangeRateCronDailyTimer: NodeJS.Timeout | null = null;
 let _exchangeRateCronMonthlyTimer: NodeJS.Timeout | null = null;
+let _exchangeRateCronStarted = false;
 
 function startExchangeRateCron(): void {
+  if (!env.EXCHANGE_RATE_CRON_ENABLED) {
+    console.log('[exchange-rate-cron] disabled by EXCHANGE_RATE_CRON_ENABLED=false');
+    return;
+  }
+  if (_exchangeRateCronStarted) {
+    console.log('[exchange-rate-cron] already started; skip duplicate init');
+    return;
+  }
+  _exchangeRateCronStarted = true;
+
   const runDaily = async () => {
     try {
       const result = await syncExchangeRates();
@@ -2086,6 +2097,7 @@ async function shutdown(): Promise<void> {
     clearInterval(_exchangeRateCronMonthlyTimer);
     _exchangeRateCronMonthlyTimer = null;
   }
+  _exchangeRateCronStarted = false;
   await stopQueue();
   await stopApprovalNotificationListener();
   await prisma.$disconnect();
