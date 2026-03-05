@@ -132,6 +132,25 @@ jobs:
         with:
           name: migration-log
           path: /tmp/migrate.log
+      - name: Post migration log as commit comment
+        if: steps.migrate.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          BODY=$(python3 -c "import sys; print(open('/tmp/migrate.log').read()[:3000])")
+          python3 -c "
+          import os, json, urllib.request
+          body = '''Migration log:\n\`\`\`\n''' + open('/tmp/migrate.log').read()[:3000] + '''\n\`\`\`'''
+          data = json.dumps({'body': body}).encode()
+          req = urllib.request.Request(
+            f'https://api.github.com/repos/{os.environ[\"REPO\"]}/commits/{os.environ[\"SHA\"]}/comments',
+            data=data,
+            headers={'Authorization': f'token {os.environ[\"GH_TOKEN\"]}', 'Accept': 'application/vnd.github.v3+json'},
+            method='POST')
+          urllib.request.urlopen(req)
+          "
       - name: Fail if migrations failed
         if: steps.migrate.outcome == 'failure'
         run: exit 1
