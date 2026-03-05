@@ -2057,7 +2057,9 @@ function startExchangeRateCron(): void {
     }
   };
 
-  const msUntil = (utcHour: number, utcMinute: number, dayOfMonth?: number): number => {
+  const SAFE_MAX_TIMEOUT = 86_400_000; // 24h — stays within 32-bit signed int
+
+  const msUntilNext = (utcHour: number, utcMinute: number, dayOfMonth?: number): number => {
     const now = new Date();
     const next = new Date(now);
     next.setUTCHours(utcHour, utcMinute, 0, 0);
@@ -2072,15 +2074,35 @@ function startExchangeRateCron(): void {
     return Math.max(next.getTime() - now.getTime(), 0);
   };
 
-  _exchangeRateCronDailyTimer = setTimeout(() => {
-    void runDaily();
-    _exchangeRateCronDailyTimer = setInterval(runDaily, 24 * 60 * 60 * 1000);
-  }, msUntil(0, 5));
+  const scheduleDaily = () => {
+    const delay = msUntilNext(0, 5);
+    _exchangeRateCronDailyTimer = setTimeout(() => {
+      void runDaily();
+      _exchangeRateCronDailyTimer = setInterval(() => void runDaily(), SAFE_MAX_TIMEOUT);
+    }, Math.min(delay, SAFE_MAX_TIMEOUT));
+  };
 
-  _exchangeRateCronMonthlyTimer = setTimeout(() => {
-    void runMonthly();
-    _exchangeRateCronMonthlyTimer = setInterval(runMonthly, 30 * 24 * 60 * 60 * 1000);
-  }, msUntil(0, 30, 2));
+  const scheduleMonthly = () => {
+    const delay = msUntilNext(0, 30, 2);
+    if (delay > SAFE_MAX_TIMEOUT) {
+      _exchangeRateCronMonthlyTimer = setTimeout(() => scheduleMonthly(), SAFE_MAX_TIMEOUT);
+    } else {
+      _exchangeRateCronMonthlyTimer = setTimeout(() => {
+        void runMonthly();
+        const reschedule = () => {
+          const nextDelay = msUntilNext(0, 30, 2);
+          _exchangeRateCronMonthlyTimer = setTimeout(() => {
+            void runMonthly();
+            reschedule();
+          }, Math.min(nextDelay, SAFE_MAX_TIMEOUT));
+        };
+        reschedule();
+      }, delay);
+    }
+  };
+
+  scheduleDaily();
+  scheduleMonthly();
 
   console.log('[exchange-rate-cron] daily sync at 00:05 UTC, monthly avg on 2nd at 00:30 UTC');
 }
