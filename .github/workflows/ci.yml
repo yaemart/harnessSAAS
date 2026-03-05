@@ -110,13 +110,13 @@ jobs:
       - name: Enable pgvector extension
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -c "CREATE EXTENSION IF NOT EXISTS vector;"
       - name: Run Prisma migrations
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_ecom
         run: |
-          printf 'DATABASE_URL=%s\n' "$DATABASE_URL" > packages/database/.env
-          for f in $(ls packages/database/prisma/migrations/*/migration.sql | sort); do
-            echo "=== Applying: $f ==="
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f "$f"
+          DB="postgresql://postgres:postgres@localhost:5432/ai_ecom"
+          printf 'DATABASE_URL=%s\n' "$DB" > packages/database/.env
+          psql "$DB" -c "SELECT 'connected' AS status;"
+          for f in packages/database/prisma/migrations/*/migration.sql; do
+            echo ">>> $f"
+            psql "$DB" -v ON_ERROR_STOP=1 -f "$f"
           done
       - name: Apply setup-app-user.sql
         run: psql postgresql://postgres:postgres@localhost:5432/ai_ecom -v ON_ERROR_STOP=1 -f scripts/setup-app-user.sql
