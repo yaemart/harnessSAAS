@@ -32,12 +32,13 @@ async function main() {
     for (const u of users) {
       const salt = crypto.randomBytes(16).toString('hex');
       const hash = hashPassword(password, salt);
+      const passwordHash = `${salt}:${hash}`;
 
       await client.query(
-        `INSERT INTO "User" (id, email, name, role, "tenantId", salt, hash, "createdAt", "updatedAt")
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, NOW(), NOW())
+        `INSERT INTO "User" (id, email, name, role, "tenantId", "passwordHash", "createdAt", "updatedAt")
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW())
          ON CONFLICT (email) DO NOTHING`,
-        [u.email, u.name, u.role, tenantId, salt, hash]
+        [u.email, u.name, u.role, tenantId, passwordHash]
       );
       console.log(`[seed] upserted user: ${u.email} (${u.role})`);
     }
