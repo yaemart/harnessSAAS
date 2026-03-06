@@ -13,11 +13,11 @@ function hashPassword(password, salt) {
 
 async function main() {
   const tenant = await prisma.tenant.upsert({
-    where: { slug: 'globaltech' },
+    where: { code: 'globaltech' },
     update: {},
     create: {
       name: 'Global Tech Corp',
-      slug: 'globaltech',
+      code: 'globaltech',
       plan: 'enterprise',
     },
   });
