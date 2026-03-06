@@ -18,7 +18,6 @@ async function main() {
     create: {
       name: 'Global Tech Corp',
       code: 'globaltech',
-      plan: 'enterprise',
     },
   });
 
