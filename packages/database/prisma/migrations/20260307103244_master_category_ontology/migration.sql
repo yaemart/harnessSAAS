@@ -4,17 +4,25 @@
   - You are about to alter the column `contextEmbedding` on the `AgentExperience` table. The data in that column could be lost. The data in that column will be cast from `Text` to `Unsupported("vector(384)")`.
 
 */
--- Enable pgvector
-CREATE EXTENSION IF NOT EXISTS vector;
+-- Enable pgvector (optional — skip if extension not available)
+DO $$ BEGIN
+  CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pgvector extension not available, skipping';
+END $$;
 
 -- CreateEnum
 CREATE TYPE "TenantPlan" AS ENUM ('starter', 'pro', 'enterprise');
 
 -- DropIndex
-DROP INDEX "ConfidenceLedger_knowledgeUsed_gin";
+DROP INDEX IF EXISTS "ConfidenceLedger_knowledgeUsed_gin";
 
--- AlterTable
-ALTER TABLE "AgentExperience" ALTER COLUMN "contextEmbedding" SET DATA TYPE vector(384) USING "contextEmbedding"::vector(384);
+-- AlterTable (only if vector extension loaded)
+DO $$ BEGIN
+  ALTER TABLE "AgentExperience" ALTER COLUMN "contextEmbedding" SET DATA TYPE vector(384) USING "contextEmbedding"::vector(384);
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'vector cast skipped — contextEmbedding remains TEXT';
+END $$;
 
 -- AlterTable
 ALTER TABLE "BrandPortalConfig" ALTER COLUMN "id" DROP DEFAULT;
