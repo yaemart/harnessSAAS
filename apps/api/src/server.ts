@@ -55,6 +55,8 @@ import { MdmIsolationHandler } from './mdm-isolation-handler.js';
 import { featureRoutes } from './feature-routes.js';
 import { exchangeRateRoutes, syncExchangeRates, calculateMonthlyAvg, purgeOldSnapshots } from './exchange-rate-routes.js';
 import { marketComplianceRoutes } from './market-compliance-routes.js';
+import { systemRegistryRoutes, systemAvailableRoutes } from './system-registry-routes.js';
+import { platformAiRoutes } from './platform-ai-routes.js';
 
 import { extractUser, requireRole, buildScopeFilter, type AuthContext } from './auth-middleware.js';
 import { authRoutes } from './auth-routes.js';
@@ -131,7 +133,7 @@ app.use(async (c, next) => {
   }
 });
 
-const skipAuthPrefixes = ['/portal', '/auth', '/health'];
+const skipAuthPrefixes = ['/portal', '/auth', '/health', '/system/available'];
 app.use(async (c, next) => {
   if (skipAuthPrefixes.some((p) => c.req.path.startsWith(p))) return next();
   return extractUser(c, next);
@@ -162,6 +164,9 @@ app.route('/mdm', knowledgeGraphRoutes);
 app.route('/features', featureRoutes);
 app.route('/exchange-rates', exchangeRateRoutes);
 app.route('/market-compliance', marketComplianceRoutes);
+app.route('/system/available', systemAvailableRoutes);
+app.route('/system', systemRegistryRoutes);
+app.route('/platform/ai', platformAiRoutes);
 
 app.get('/mdm/debug-reload', (c) => c.json({ reloadedAt: new Date().toISOString(), version: 'v4-final' }));
 

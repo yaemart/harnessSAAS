@@ -5,8 +5,20 @@ import { env } from './env.js';
 export enum WorkType {
   PORTAL_SUPPORT_RESPONSE = 'portal_support_response',
   MEDIA_ANALYSIS = 'media_analysis',
-  KNOWLEDGE_GRAPH_GENERATION = 'knowledge_graph_generation',
+  KNOWLEDGE_STRUCTURING = 'knowledge_structuring',
+  CONTENT_GENERATION = 'content_generation',
+  ANALYTICS_FORECAST = 'analytics_forecast',
+  MULTIMODAL_ANALYSIS = 'multimodal_analysis',
 }
+
+export const WORK_TYPE_META: Record<WorkType, { label: string; description: string; available: boolean }> = {
+  [WorkType.PORTAL_SUPPORT_RESPONSE]: { label: 'Support Response', description: 'Customer support, FAQ, and conversational AI', available: true },
+  [WorkType.MEDIA_ANALYSIS]: { label: 'Media Analysis', description: 'Image quality detection, visual tagging', available: true },
+  [WorkType.KNOWLEDGE_STRUCTURING]: { label: 'Knowledge & Structuring', description: 'Knowledge graph, information extraction, data structuring', available: true },
+  [WorkType.CONTENT_GENERATION]: { label: 'Content Generation', description: 'Product titles, descriptions, SEO copy', available: false },
+  [WorkType.ANALYTICS_FORECAST]: { label: 'Analytics & Forecast', description: 'Sales prediction, inventory analysis', available: false },
+  [WorkType.MULTIMODAL_ANALYSIS]: { label: 'Multi-modal Analysis', description: 'Combined image + text processing', available: false },
+};
 
 export interface ModelCallOptions {
   systemInstruction?: string;
@@ -104,10 +116,13 @@ class GeminiProvider implements AIProvider {
   }
 }
 
-const DEFAULT_MODELS: Record<WorkType, string> = {
-  [WorkType.PORTAL_SUPPORT_RESPONSE]: 'gemini-2.0-flash',
-  [WorkType.MEDIA_ANALYSIS]: 'gemini-2.0-flash',
-  [WorkType.KNOWLEDGE_GRAPH_GENERATION]: 'gemini-2.0-flash',
+export const DEFAULT_MODELS: Record<WorkType, string> = {
+  [WorkType.PORTAL_SUPPORT_RESPONSE]: 'gemini-2.5-flash',
+  [WorkType.MEDIA_ANALYSIS]: 'gemini-2.5-flash',
+  [WorkType.KNOWLEDGE_STRUCTURING]: 'gemini-2.5-flash',
+  [WorkType.CONTENT_GENERATION]: 'gemini-2.5-flash',
+  [WorkType.ANALYTICS_FORECAST]: 'gemini-3.1-pro',
+  [WorkType.MULTIMODAL_ANALYSIS]: 'gemini-3.1-pro',
 };
 
 export const DEFAULT_MODEL_ID = DEFAULT_MODELS[WorkType.PORTAL_SUPPORT_RESPONSE];
@@ -123,6 +138,17 @@ export const MODEL_CATALOG: ModelCatalogItem[] = [
     description: 'Higher reasoning capability for complex tasks',
   },
   {
+    id: 'gemini-3.0',
+    name: 'Gemini 3.0',
+    description: 'Balanced performance and cost',
+  },
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    description: 'Previous generation fast model',
+    isLegacy: true,
+  },
+  {
     id: 'gemini-1.5-flash',
     name: 'Gemini 1.5 Flash',
     description: 'Legacy fast model',
@@ -136,29 +162,63 @@ export const MODEL_CATALOG: ModelCatalogItem[] = [
   },
 ];
 
-interface AIConfig {
+export interface AIConfig {
   geminiKey?: string;
   modelId?: string;
   models?: Partial<Record<WorkType, string>>;
+  _tenantModelId?: string;
+  _platformModelId?: string;
+  _tenantModels?: Partial<Record<WorkType, string>>;
+  _platformModels?: Partial<Record<WorkType, string>>;
 }
 
-async function resolveConfig(tenantId: string): Promise<{ apiKey: string; config: AIConfig }> {
-  const policy = await prisma.policyConfig.findFirst({
+export const SYSTEM_TENANT_ID = '00000000-0000-0000-0000-000000000000';
+
+async function resolveConfig(tenantId: string): Promise<{ apiKey: string; config: AIConfig; keySource: 'tenant' | 'platform' | 'none' }> {
+  const tenantPolicy = await prisma.policyConfig.findFirst({
     where: { tenantId, policyKey: 'ai_integrations' },
   });
+  const tenantConfig = (tenantPolicy?.policyValue as AIConfig) ?? {};
 
-  const config = (policy?.policyValue as AIConfig) ?? {};
-  const apiKey = config.geminiKey || env.GEMINI_API_KEY;
+  const platformPolicy = await prisma.policyConfig.findFirst({
+    where: { tenantId: SYSTEM_TENANT_ID, policyKey: 'platform_ai_config' },
+  });
+  const platformConfig = (platformPolicy?.policyValue as AIConfig) ?? {};
 
-  if (!apiKey) {
-    throw new ModelRouterError('AI is not configured for this tenant. Set GEMINI_API_KEY or configure ai_integrations policy.');
+  let keySource: 'tenant' | 'platform' | 'none' = 'none';
+  let apiKey = '';
+
+  if (tenantConfig.geminiKey) {
+    apiKey = tenantConfig.geminiKey;
+    keySource = 'tenant';
+  } else if (platformConfig.geminiKey || env.GEMINI_API_KEY) {
+    apiKey = platformConfig.geminiKey || env.GEMINI_API_KEY || '';
+    keySource = 'platform';
   }
 
-  return { apiKey, config };
+  if (!apiKey) {
+    throw new ModelRouterError('AI is not configured. Set a platform key or tenant BYOK key.');
+  }
+
+  const mergedConfig: AIConfig = {
+    geminiKey: apiKey,
+    modelId: tenantConfig.modelId ?? platformConfig.modelId,
+    models: { ...platformConfig.models, ...tenantConfig.models },
+    _tenantModelId: tenantConfig.modelId,
+    _platformModelId: platformConfig.modelId,
+    _tenantModels: tenantConfig.models,
+    _platformModels: platformConfig.models,
+  };
+
+  return { apiKey, config: mergedConfig, keySource };
 }
 
 function resolveModel(workType: WorkType, config: AIConfig): string {
-  return config.models?.[workType] ?? config.modelId ?? DEFAULT_MODELS[workType];
+  if (config._tenantModels?.[workType]) return config._tenantModels[workType]!;
+  if (config._tenantModelId) return config._tenantModelId;
+  if (config._platformModels?.[workType]) return config._platformModels[workType]!;
+  if (config._platformModelId) return config._platformModelId;
+  return DEFAULT_MODELS[workType];
 }
 
 function createProvider(apiKey: string): AIProvider {

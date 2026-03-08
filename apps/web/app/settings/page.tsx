@@ -3,11 +3,9 @@
 import { useState } from 'react';
 import { SettingsIntegrations } from '../../components/settings-integrations';
 import { SettingsPrimitives } from '../../components/settings-primitives';
-import { SettingsAi } from '../../components/settings-ai';
-import { SettingsSubscription } from '../../components/settings-subscription';
 import { RoleGuard } from '../../components/guards/role-guard';
 
-type SettingsSection = 'integrations' | 'primitives' | 'ai' | 'subscription';
+type SettingsSection = 'integrations' | 'primitives';
 
 export default function SettingsPage() {
     const [section, setSection] = useState<SettingsSection>('integrations');
@@ -15,14 +13,11 @@ export default function SettingsPage() {
     const SECTIONS: { key: SettingsSection; label: string; description: string }[] = [
         { key: 'integrations', label: 'Integrations', description: 'Manage platform connections, 3PL, warehouses, and ERP systems' },
         { key: 'primitives', label: 'Business Primitives', description: 'Configure markets, categories, brands, and suppliers' },
-        { key: 'ai', label: 'AI Integrations', description: 'Manage LLM providers, model selection, and Vertex AI / Gemini keys' },
-        { key: 'subscription', label: 'Subscription', description: 'View your plan, AI quota usage, and upgrade or downgrade' },
     ];
 
     return (
         <RoleGuard allowedRoles={['tenant_admin']}>
         <div style={{ padding: 32, maxWidth: 1200, margin: '0 auto' }}>
-            {/* Page Header */}
             <div style={{ marginBottom: 32 }}>
                 <h1 style={{
                     fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em',
@@ -38,7 +33,6 @@ export default function SettingsPage() {
                 </p>
             </div>
 
-            {/* Section Switcher */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
                 {SECTIONS.map((s) => (
                     <button
@@ -69,11 +63,7 @@ export default function SettingsPage() {
                 ))}
             </div>
 
-            {/* Active Section */}
-            {section === 'integrations' ? <SettingsIntegrations /> :
-                section === 'primitives' ? <SettingsPrimitives /> :
-                section === 'subscription' ? <SettingsSubscription /> :
-                    <SettingsAi />}
+            {section === 'integrations' ? <SettingsIntegrations /> : <SettingsPrimitives />}
         </div>
         </RoleGuard>
     );

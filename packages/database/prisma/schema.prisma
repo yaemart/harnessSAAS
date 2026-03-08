@@ -151,37 +151,37 @@ model Brand {
 }
 
 model Product {
-  id                  String                @id @default(uuid()) @db.Uuid
-  tenantId            String                @db.Uuid
-  brandId             String                @db.Uuid
-  categoryId          String                @db.Uuid
-  supplierId          String?               @db.Uuid
+  id                  String                   @id @default(uuid()) @db.Uuid
+  tenantId            String                   @db.Uuid
+  brandId             String                   @db.Uuid
+  categoryId          String                   @db.Uuid
+  supplierId          String?                  @db.Uuid
   sku                 String
   name                String
-  lifecycleStage      String                @default("NEW")
+  lifecycleStage      String                   @default("NEW")
   upc                 String?
   asin                String?
-  costPrice           Decimal?              @db.Decimal(14, 2)
-  msrp                Decimal?              @db.Decimal(14, 2)
-  weight              Decimal?              @db.Decimal(10, 3)
+  costPrice           Decimal?                 @db.Decimal(14, 2)
+  msrp                Decimal?                 @db.Decimal(14, 2)
+  weight              Decimal?                 @db.Decimal(10, 3)
   dimensions          Json?
-  tags                String[]              @default([])
-  imageUrls           String[]              @default([])
+  tags                String[]                 @default([])
+  imageUrls           String[]                 @default([])
   attributes          Json? // Legacy generic attributes
   structuredFeatures  Json? // L2: Knowledge Graph formatted features
-  scenarios           String[]              @default([]) // L3: Usage scenarios
-  targetIntents       String[]              @default([]) // L4: Target user intents
+  scenarios           String[]                 @default([]) // L3: Usage scenarios
+  targetIntents       String[]                 @default([]) // L4: Target user intents
   competitiveEdges    Json? // L5: Competitive graph advantages
   dataQualityScore    Float?
-  featureFrozen       Boolean               @default(false)
+  featureFrozen       Boolean                  @default(false)
   featureFrozenReason String?
   lastVerifiedAt      DateTime?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  brand               Brand                 @relation(fields: [brandId], references: [id], onDelete: Restrict)
-  category            Category              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  supplier            Supplier?             @relation(fields: [supplierId], references: [id])
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  tenant              Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  brand               Brand                    @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  category            Category                 @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  supplier            Supplier?                @relation(fields: [supplierId], references: [id])
   commodities         Commodity[]
   snapshots           PerformanceSnapshot[]
   policies            PolicyConfig[]
@@ -516,21 +516,201 @@ model SecurityAuditEvent {
 }
 
 // ============================================
+// Layer A — Global Registry (System Admin Managed)
+// ============================================
+
+model GlobalMarket {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  currency  String   @default("USD")
+  timezone  String   @default("America/New_York")
+  flag      String   @default("")
+  region    String   @default("other")
+  enabled   Boolean  @default(true)
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GlobalPlatform {
+  id                   String   @id @default(uuid()) @db.Uuid
+  code                 String   @unique
+  name                 String
+  icon                 String   @default("")
+  color                String   @default("#6366f1")
+  description          String   @default("")
+  badge                String?
+  badgeColor           String?
+  enabled              Boolean  @default(true)
+  supportedMarketCodes String[]
+  enabledMarketCodes   String[]
+  updatedBy            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model GlobalCategory {
+  id               String                    @id @default(uuid()) @db.Uuid
+  code             String                    @unique
+  name             String
+  nameZh           String?
+  level            Int                       @default(1)
+  icon             String                    @default("")
+  tags             String[]                  @default([])
+  path             String                    @default("")
+  slugPath         String                    @default("")
+  status           String                    @default("DRAFT")
+  source           String                    @default("manual")
+  marketScope      String[]                  @default([])
+  enabled          Boolean                   @default(true)
+  sortOrder        Int                       @default(0)
+  mappingCount     Int                       @default(0)
+  googleTaxonomyId Int?
+  attributeSchema  Json?
+  updatedBy        String?
+  parentId         String?                   @db.Uuid
+  replacedBy       String?                   @db.Uuid
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  parent           GlobalCategory?           @relation("GlobalCategoryTree", fields: [parentId], references: [id])
+  children         GlobalCategory[]          @relation("GlobalCategoryTree")
+  replacement      GlobalCategory?           @relation("CategoryReplacement", fields: [replacedBy], references: [id])
+  replaced         GlobalCategory[]          @relation("CategoryReplacement")
+  platformMappings CategoryPlatformMapping[]
+  aliases          CategoryAlias[]
+
+  @@index([parentId])
+  @@index([level])
+  @@index([source])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([googleTaxonomyId])
+}
+
+model PlatformCategory {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  platform           String
+  platformCategoryId String
+  name               String
+  path               String                    @default("")
+  level              Int                       @default(1)
+  marketCode         String                    @default("GLOBAL")
+  parentId           String?                   @db.Uuid
+  rawData            Json?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  parent             PlatformCategory?         @relation("PlatformCategoryTree", fields: [parentId], references: [id])
+  children           PlatformCategory[]        @relation("PlatformCategoryTree")
+  mappings           CategoryPlatformMapping[]
+
+  @@unique([platform, platformCategoryId, marketCode])
+  @@index([parentId])
+  @@index([platform, level])
+}
+
+model CategoryPlatformMapping {
+  id                 String            @id @default(uuid()) @db.Uuid
+  globalCategoryId   String            @db.Uuid
+  platformCategoryId String?           @db.Uuid
+  platform           String
+  marketCode         String            @default("GLOBAL")
+  externalCategoryId String?
+  externalPath       String?
+  mappingType        String            @default("EXACT")
+  confidenceScore    Float             @default(1.0)
+  direction          String            @default("BIDIRECTIONAL")
+  status             String            @default("active")
+  source             String            @default("manual")
+  notes              String?
+  createdBy          String?
+  updatedBy          String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  globalCategory     GlobalCategory    @relation(fields: [globalCategoryId], references: [id], onDelete: Cascade)
+  platformCategory   PlatformCategory? @relation(fields: [platformCategoryId], references: [id], onDelete: SetNull)
+
+  @@unique([globalCategoryId, platformCategoryId, marketCode])
+  @@index([platform, marketCode])
+  @@index([globalCategoryId])
+  @@index([platformCategoryId])
+  @@index([status])
+}
+
+model CategoryAlias {
+  id               String         @id @default(uuid()) @db.Uuid
+  globalCategoryId String         @db.Uuid
+  alias            String
+  language         String         @default("en")
+  aliasType        String         @default("synonym")
+  source           String         @default("manual")
+  weight           Float          @default(1.0)
+  createdAt        DateTime       @default(now())
+  globalCategory   GlobalCategory @relation(fields: [globalCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([globalCategoryId, alias, language])
+  @@index([globalCategoryId])
+  @@index([alias])
+}
+
+model GlobalWarehouse {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  type        String   @default("3PL")
+  region      String   @default("us")
+  country     String   @default("US")
+  nodes       String[]
+  description String   @default("")
+  enabled     Boolean  @default(true)
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GlobalErpSystem {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  vendor      String   @default("")
+  icon        String   @default("")
+  description String   @default("")
+  enabled     Boolean  @default(true)
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GlobalTool {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  category    String   @default("")
+  icon        String   @default("")
+  description String   @default("")
+  enabled     Boolean  @default(true)
+  updatedBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============================================
 // MDM — Tenant Business Primitives
 // ============================================
 
 model Market {
-  id          String           @id @default(uuid()) @db.Uuid
-  tenantId    String           @db.Uuid
-  code        String // "US", "CA", "EU"
-  name        String // "United States", "Canada"
-  currency    String           @default("USD")
-  timezone    String           @default("America/New_York")
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  languages   MarketLanguage[]
-  commodities Commodity[]
+  id               String           @id @default(uuid()) @db.Uuid
+  tenantId         String           @db.Uuid
+  code             String // "US", "CA", "EU"
+  name             String // "United States", "Canada"
+  currency         String           @default("USD")
+  timezone         String           @default("America/New_York")
+  globalMarketCode String? // FK-like ref to GlobalMarket.code; null = legacy/pre-registry data
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  languages        MarketLanguage[]
+  commodities      Commodity[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -547,19 +727,20 @@ model MarketLanguage {
 }
 
 model Platform {
-  id               String                    @id @default(uuid()) @db.Uuid
-  tenantId         String                    @db.Uuid
-  code             String // "amazon-us", "walmart", "shopify"
-  name             String // "Amazon US", "Walmart Marketplace"
-  apiType          String // "SP-API", "Walmart-API", "Shopify-Admin", "CommerceHub-EDI"
-  apiCredentials   Json? // encrypted JSON
-  apiStatus        String                    @default("disconnected") // "connected" | "disconnected" | "error"
-  lastSyncAt       DateTime?
-  createdAt        DateTime                  @default(now())
-  updatedAt        DateTime                  @updatedAt
-  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  fulfillmentModes PlatformFulfillmentMode[]
-  listings         Listing[]
+  id                 String                    @id @default(uuid()) @db.Uuid
+  tenantId           String                    @db.Uuid
+  code               String // "amazon-us", "walmart", "shopify"
+  name               String // "Amazon US", "Walmart Marketplace"
+  apiType            String // "SP-API", "Walmart-API", "Shopify-Admin", "CommerceHub-EDI"
+  apiCredentials     Json? // encrypted JSON
+  apiStatus          String                    @default("disconnected") // "connected" | "disconnected" | "error"
+  lastSyncAt         DateTime?
+  globalPlatformCode String? // FK-like ref to GlobalPlatform.code
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  tenant             Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  fulfillmentModes   PlatformFulfillmentMode[]
+  listings           Listing[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -577,19 +758,20 @@ model PlatformFulfillmentMode {
 }
 
 model Category {
-  id               String                    @id @default(uuid()) @db.Uuid
-  tenantId         String                    @db.Uuid
-  code             String // "electronics", "kitchen-appliances"
-  name             String
-  definition       String? // Optional natural language definition for AI Agent
-  parentId         String?                   @db.Uuid // Self-referencing tree
-  createdAt        DateTime                  @default(now())
-  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  parent           Category?                 @relation("CategoryTree", fields: [parentId], references: [id])
-  children         Category[]                @relation("CategoryTree")
-  products         Product[]
-  brandCategories  BrandCategory[]
-  attributeSchemas CategoryAttributeSchema[]
+  id                 String                    @id @default(uuid()) @db.Uuid
+  tenantId           String                    @db.Uuid
+  code               String // "electronics", "kitchen-appliances"
+  name               String
+  definition         String? // Optional natural language definition for AI Agent
+  parentId           String?                   @db.Uuid // Self-referencing tree
+  globalCategoryCode String? // FK-like ref to GlobalCategory.code
+  createdAt          DateTime                  @default(now())
+  tenant             Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  parent             Category?                 @relation("CategoryTree", fields: [parentId], references: [id])
+  children           Category[]                @relation("CategoryTree")
+  products           Product[]
+  brandCategories    BrandCategory[]
+  attributeSchemas   CategoryAttributeSchema[]
 
   @@unique([tenantId, code])
   @@index([tenantId, parentId])
@@ -639,21 +821,22 @@ model ThirdPartyLogistics {
 }
 
 model Warehouse {
-  id                 String      @id @default(uuid()) @db.Uuid
-  tenantId           String      @db.Uuid
-  code               String // "WH-SZ-01"
-  name               String // "深圳中转仓"
-  type               String      @default("transit") // "transit" | "overseas" | "bonded"
-  country            String      @default("CN")
-  address            String?
-  capacity           Int? // cubic meters or pallet count
-  apiCredentials     Json? // WMS API credentials, encrypted
-  apiStatus          String      @default("disconnected")
-  lastSyncAt         DateTime?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  routingCommodities Commodity[] // Reverse relation for routingWarehouseId in Commodity
+  id                  String      @id @default(uuid()) @db.Uuid
+  tenantId            String      @db.Uuid
+  code                String // "WH-SZ-01"
+  name                String // "深圳中转仓"
+  type                String      @default("transit") // "transit" | "overseas" | "bonded"
+  country             String      @default("CN")
+  address             String?
+  capacity            Int? // cubic meters or pallet count
+  apiCredentials      Json? // WMS API credentials, encrypted
+  apiStatus           String      @default("disconnected")
+  lastSyncAt          DateTime?
+  globalWarehouseCode String? // FK-like ref to GlobalWarehouse.code
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  tenant              Tenant      @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  routingCommodities  Commodity[] // Reverse relation for routingWarehouseId in Commodity
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -689,6 +872,7 @@ model ErpSystem {
   apiStatus      String    @default("disconnected")
   lastSyncAt     DateTime?
   syncDirection  String    @default("bidirectional") // "inbound" | "outbound" | "bidirectional"
+  globalErpCode  String? // FK-like ref to GlobalErpSystem.code
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Restrict)
@@ -967,9 +1151,9 @@ model DecisionLog {
   id              String   @id @default(uuid()) @db.Uuid
   tenantId        String   @db.Uuid
   entityHash      String
-  entityType      String   // Denormalized from entityHash for query convenience.
-                           // MUST equal split_part(entityHash,':',1). Always set via
-                           // buildEntityHash() in feature-routes.ts to guarantee consistency.
+  entityType      String // Denormalized from entityHash for query convenience.
+  // MUST equal split_part(entityHash,':',1). Always set via
+  // buildEntityHash() in feature-routes.ts to guarantee consistency.
   agentId         String
   decisionType    String
   inputFeatures   Json?
@@ -1416,4 +1600,14 @@ model ExchangeRateMonthlyAvg {
   @@unique([year, month, baseCurrency, targetCurrency])
   @@index([year, month])
   @@index([targetCurrency])
+}
+
+model LegacyCategoryCodeMapping {
+  id      String  @id @default(uuid()) @db.Uuid
+  oldCode String  @unique
+  newCode String
+  note    String?
+
+  @@index([oldCode])
+  @@index([newCode])
 }

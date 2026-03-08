@@ -1,10 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTenant } from './tenant-context';
 import { useAuth } from './auth-context';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3300';
+
+function useGlobalRegistryIntegrations(tab: string) {
+    const [registryCodes, setRegistryCodes] = useState<Set<string>>(new Set());
+    useEffect(() => {
+        const mapping: Record<string, string> = { platforms: 'platforms', warehouses: 'warehouses', erp: 'erp-systems' };
+        const endpoint = mapping[tab];
+        if (!endpoint) { setRegistryCodes(new Set()); return; }
+        fetch(`${API_BASE}/system/available/${endpoint}`)
+            .then(r => r.ok ? r.json() : { items: [] })
+            .then((data: { items: { code: string }[] }) => setRegistryCodes(new Set((data.items ?? []).map(i => i.code))))
+            .catch(() => setRegistryCodes(new Set()));
+    }, [tab]);
+    return registryCodes;
+}
+
+function DeprecatedBadge() {
+    return (
+        <span style={{
+            fontSize: 10, padding: '1px 6px', borderRadius: 5, marginLeft: 6,
+            background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+            color: 'var(--warning)',
+            border: '1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
+            fontWeight: 600,
+        }}>deprecated</span>
+    );
+}
 
 type ApiStatus = 'connected' | 'disconnected' | 'error';
 
@@ -50,6 +76,12 @@ export function SettingsIntegrations() {
     const [tab, setTab] = useState<TabKey>('platforms');
     const [items, setItems] = useState<Integration[]>([]);
     const [loading, setLoading] = useState(true);
+    const registryCodes = useGlobalRegistryIntegrations(tab);
+
+    const isDeprecated = useCallback((code: string) => {
+        if (registryCodes.size === 0) return false;
+        return !registryCodes.has(code.toLowerCase());
+    }, [registryCodes]);
 
     const activeTab = TABS.find((t) => t.key === tab)!;
 
@@ -267,8 +299,9 @@ export function SettingsIntegrations() {
                                     flexShrink: 0,
                                 }} />
                                 <div>
-                                    <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>
+                                    <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', display: 'flex', alignItems: 'center' }}>
                                         {item.name}
+                                        {isDeprecated(item.code) && <DeprecatedBadge />}
                                     </div>
                                     <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                                         {item.code}

@@ -175,7 +175,7 @@ kg.post('/products/:id/graph/generate', async (c) => {
         `;
 
         const rawText = await ModelRouter.call(
-            WorkType.KNOWLEDGE_GRAPH_GENERATION,
+            WorkType.KNOWLEDGE_STRUCTURING,
             tenantId,
             prompt,
         );
@@ -242,7 +242,7 @@ kg.post('/products/:id/graph/generate-commodity', async (c) => {
         `;
 
         const rawText = await ModelRouter.call(
-            WorkType.KNOWLEDGE_GRAPH_GENERATION,
+            WorkType.KNOWLEDGE_STRUCTURING,
             tenantId,
             prompt,
         );

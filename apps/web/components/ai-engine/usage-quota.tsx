@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from './auth-context';
-import { tintedBg } from '../lib/design-tokens';
+import { useAuth } from '../auth-context';
+import { tintedBg } from '../../lib/design-tokens';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3300';
 
 const PLAN_META = {
   starter:    { label: 'Starter',    color: 'var(--text-secondary)', aiOps: 100,     budget: '5,000',     desc: 'For small teams getting started' },
   pro:        { label: 'Pro',        color: 'var(--accent)',         aiOps: 1_000,   budget: '50,000',    desc: 'For growing businesses' },
-  enterprise: { label: 'Enterprise', color: '#AF52DE',               aiOps: Infinity, budget: '∞',        desc: 'For large-scale operations' },
+  enterprise: { label: 'Enterprise', color: '#AF52DE',               aiOps: Infinity, budget: '\u221E',   desc: 'For large-scale operations' },
 } as const;
 type PlanKey = keyof typeof PLAN_META;
 
@@ -18,9 +20,8 @@ interface SubscriptionData {
   usage: { dailyOps: number; dailyBudget: number };
 }
 
-export function SettingsSubscription() {
+export function UsageQuota() {
   const { authHeaders } = useAuth();
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3300';
 
   const [data, setData] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,18 +30,18 @@ export function SettingsSubscription() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/subscription`, { headers: authHeaders })
+    fetch(`${API_BASE}/subscription`, { headers: authHeaders })
       .then(r => r.json())
       .then(d => setData(d))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [API, authHeaders]);
+  }, [authHeaders]);
 
   async function applyPlan(plan: PlanKey) {
     setSaving(true);
     setMsg(null);
     try {
-      const r = await fetch(`${API}/subscription`, {
+      const r = await fetch(`${API_BASE}/subscription`, {
         method: 'PATCH',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan }),
@@ -60,7 +61,7 @@ export function SettingsSubscription() {
     }
   }
 
-  if (loading) return <div style={{ padding: 32, color: 'var(--text-secondary)', fontSize: 14 }}>Loading subscription…</div>;
+  if (loading) return <div style={{ padding: 32, color: 'var(--text-secondary)', fontSize: 14 }}>Loading subscription...</div>;
   if (!data) return <div style={{ padding: 32, color: 'var(--danger)', fontSize: 14 }}>Failed to load subscription data.</div>;
 
   const currentMeta = PLAN_META[data.plan] ?? PLAN_META.starter;
@@ -70,7 +71,6 @@ export function SettingsSubscription() {
 
   return (
     <div>
-      {/* Current plan card */}
       <div style={{
         padding: 24, borderRadius: 14,
         background: 'var(--panel-bg)', border: `2px solid ${currentMeta.color}`,
@@ -91,7 +91,6 @@ export function SettingsSubscription() {
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>{currentMeta.desc}</div>
           </div>
 
-          {/* Usage */}
           <div style={{ minWidth: 200 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>
               Today&apos;s AI Usage
@@ -99,7 +98,7 @@ export function SettingsSubscription() {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
               <span style={{ color: 'var(--text-secondary)' }}>AI Ops</span>
               <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                {data.usage.dailyOps.toLocaleString()} / {data.quotas.maxDailyOps >= 999_999 ? '∞' : data.quotas.maxDailyOps.toLocaleString()}
+                {data.usage.dailyOps.toLocaleString()} / {data.quotas.maxDailyOps >= 999_999 ? '\u221E' : data.quotas.maxDailyOps.toLocaleString()}
               </span>
             </div>
             {data.quotas.maxDailyOps < 999_999 && (
@@ -113,13 +112,12 @@ export function SettingsSubscription() {
               </div>
             )}
             <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-              Budget/day: <b>{data.quotas.maxDailyBudget >= 999_999_999 ? '∞' : data.quotas.maxDailyBudget.toLocaleString()}</b>
+              Budget/day: <b>{data.quotas.maxDailyBudget >= 999_999_999 ? '\u221E' : data.quotas.maxDailyBudget.toLocaleString()}</b>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Plan picker */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>
           Change Plan
@@ -138,10 +136,10 @@ export function SettingsSubscription() {
                 <div style={{ fontWeight: 700, fontSize: 15, color: m.color, marginBottom: 4 }}>{m.label}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{m.desc}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                  {m.aiOps === Infinity ? '∞' : m.aiOps.toLocaleString()} AI ops · {m.budget} budget
+                  {m.aiOps === Infinity ? '\u221E' : m.aiOps.toLocaleString()} AI ops &middot; {m.budget} budget
                 </div>
                 {isCurrent ? (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: m.color }}>✓ Current</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: m.color }}>Current</span>
                 ) : isConfirming ? (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -152,7 +150,7 @@ export function SettingsSubscription() {
                         background: m.color === 'var(--text-secondary)' ? 'var(--danger)' : m.color,
                         color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer',
                       }}
-                    >{saving ? '…' : 'Confirm'}</button>
+                    >{saving ? '...' : 'Confirm'}</button>
                     <button
                       onClick={() => setConfirmPlan(null)}
                       style={{
@@ -182,7 +180,6 @@ export function SettingsSubscription() {
         </div>
       </div>
 
-      {/* Cancel subscription */}
       <div style={{
         padding: '16px 20px', borderRadius: 12,
         background: tintedBg('var(--danger)', 6), border: '1px solid var(--danger)',

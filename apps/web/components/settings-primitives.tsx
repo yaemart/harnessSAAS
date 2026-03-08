@@ -6,6 +6,32 @@ import { useAuth } from './auth-context';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3300';
 
+function useGlobalRegistry(tab: string) {
+    const [registryCodes, setRegistryCodes] = useState<Set<string>>(new Set());
+    useEffect(() => {
+        const mapping: Record<string, string> = { markets: 'markets', categories: 'categories', platforms: 'platforms' };
+        const endpoint = mapping[tab];
+        if (!endpoint) { setRegistryCodes(new Set()); return; }
+        fetch(`${API_BASE}/system/available/${endpoint}`)
+            .then(r => r.ok ? r.json() : { items: [] })
+            .then((data: { items: { code: string }[] }) => setRegistryCodes(new Set((data.items ?? []).map(i => i.code))))
+            .catch(() => setRegistryCodes(new Set()));
+    }, [tab]);
+    return registryCodes;
+}
+
+function DeprecatedBadge() {
+    return (
+        <span style={{
+            fontSize: 10, padding: '1px 6px', borderRadius: 5, marginLeft: 6,
+            background: 'color-mix(in srgb, var(--warning) 12%, transparent)',
+            color: 'var(--warning)',
+            border: '1px solid color-mix(in srgb, var(--warning) 25%, transparent)',
+            fontWeight: 600,
+        }}>deprecated</span>
+    );
+}
+
 type PrimitiveTab = 'markets' | 'categories' | 'brands' | 'suppliers' | 'platforms';
 
 const TABS: { key: PrimitiveTab; label: string; endpoint: string }[] = [
@@ -176,6 +202,12 @@ export function SettingsPrimitives() {
     const [tab, setTab] = useState<PrimitiveTab>('markets');
     const [items, setItems] = useState<PrimitiveItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const registryCodes = useGlobalRegistry(tab);
+
+    const isDeprecated = useCallback((code: string) => {
+        if (registryCodes.size === 0) return false;
+        return !registryCodes.has(code.toLowerCase());
+    }, [registryCodes]);
 
     const activeTab = TABS.find((t) => t.key === tab)!;
 
@@ -810,6 +842,7 @@ export function SettingsPrimitives() {
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{item.name}</span>
+                                    {isDeprecated(item.code) && <DeprecatedBadge />}
                                     <span style={{
                                         fontSize: 11, padding: '2px 8px', borderRadius: 6,
                                         background: 'var(--panel-bg-secondary)',

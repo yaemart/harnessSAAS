@@ -8,6 +8,7 @@ from __future__ import annotations
 from .registry import ToolRegistry
 from . import support_tools
 from . import exchange_rate_tools
+from . import registry_tools
 
 
 def bootstrap_tools(registry: ToolRegistry) -> ToolRegistry:
@@ -25,6 +26,19 @@ def bootstrap_tools(registry: ToolRegistry) -> ToolRegistry:
     # ── Exchange rate tools (read) ──
     registry.register("get_exchange_rate", "read", exchange_rate_tools.get_exchange_rate)
     registry.register("get_monthly_avg_rate", "read", exchange_rate_tools.get_monthly_avg_rate)
+
+    # ── Global registry tools (read) — Layer A knowledge ──
+    registry.register("get_available_markets", "read", registry_tools.get_available_markets)
+    registry.register("get_available_platforms", "read", registry_tools.get_available_platforms)
+    registry.register("get_available_categories", "read", registry_tools.get_available_categories)
+    registry.register("get_available_warehouses", "read", registry_tools.get_available_warehouses)
+    registry.register("get_available_erp_systems", "read", registry_tools.get_available_erp_systems)
+    registry.register("get_available_tools", "read", registry_tools.get_available_tools)
+
+    # ── Category ontology tools (read) ──
+    registry.register("search_categories", "read", registry_tools.search_categories)
+    registry.register("get_category_mappings", "read", registry_tools.get_category_mappings)
+    registry.register("get_category_aliases", "read", registry_tools.get_category_aliases)
 
     return registry
 

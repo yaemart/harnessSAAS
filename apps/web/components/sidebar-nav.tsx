@@ -21,10 +21,12 @@ import {
     DollarSign,
     Globe,
     Shield,
+    Database,
     Zap,
     GitPullRequestArrow,
     TrendingUp,
     ShieldCheck,
+    BrainCircuit,
 } from 'lucide-react';
 import { useTenant } from './tenant-context';
 import { useAuth, type UserRole } from './auth-context';
@@ -50,11 +52,14 @@ export function SidebarNav() {
         { name: 'Exchange Rates', path: '/exchange-rates', icon: <TrendingUp size={20} />, roles: ['system_admin'], group: 'Platform' },
         { name: 'Market Compliance', path: '/markets', icon: <ShieldCheck size={20} />, roles: ['system_admin'], group: 'Platform' },
         { name: 'User Management', path: '/team', icon: <Users size={20} />, roles: ['system_admin'], group: 'Platform' },
+        { name: 'Global Registry', path: '/registry', icon: <Database size={20} />, roles: ['system_admin'], group: 'Platform' },
+        { name: 'AI Platform Config', path: '/platform-ai', icon: <BrainCircuit size={20} />, roles: ['system_admin'], group: 'Platform' },
 
         // ─── Tenant Admin: Company-level ───
         { name: 'Business Overview', path: '/dashboard', icon: <LayoutDashboard size={20} />, roles: ['tenant_admin'], group: 'Business' },
         { name: 'Agent Authority', path: '/agent-auth', icon: <UserCog size={20} />, roles: ['tenant_admin'], group: 'Business' },
         { name: 'Cost Profiles', path: '/cost-profiles', icon: <DollarSign size={20} />, roles: ['tenant_admin'], group: 'Business' },
+        { name: 'AI Engine', path: '/ai-engine', icon: <BrainCircuit size={20} />, roles: ['tenant_admin'], group: 'Business' },
         { name: 'Integrations', path: '/settings', icon: <Link2 size={20} />, roles: ['tenant_admin'], group: 'Business' },
         { name: 'My Team', path: '/team', icon: <Users size={20} />, roles: ['tenant_admin'], group: 'Business' },
 

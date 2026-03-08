@@ -103,6 +103,17 @@ def initial_tools() -> Dict[str, list[str]]:
             "list_support_cases",
             "get_support_case",
             "get_support_stats",
+            # Global registry tools (Layer A knowledge)
+            "get_available_markets",
+            "get_available_platforms",
+            "get_available_categories",
+            "get_available_warehouses",
+            "get_available_erp_systems",
+            "get_available_tools",
+            # Category ontology tools
+            "search_categories",
+            "get_category_mappings",
+            "get_category_aliases",
         ],
         "write": [
             "create_intent_log",

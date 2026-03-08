@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from './db.js';
-import { DEFAULT_MODEL_ID, MODEL_CATALOG, ModelRouter } from './model-router.js';
+import { DEFAULT_MODEL_ID, DEFAULT_MODELS, MODEL_CATALOG, WORK_TYPE_META, SYSTEM_TENANT_ID, ModelRouter, WorkType, type AIConfig } from './model-router.js';
 import { requireRole, type AuthContext } from './auth-middleware.js';
 
 import { AMAZON_US_CATALOG } from './amazon-catalog-v4.js';
@@ -20,6 +20,8 @@ function requireTenantId(c: { req: { header: (n: string) => string | undefined; 
 
 const mdm = new Hono();
 mdm.use('/ai-config/test', requireRole('system_admin', 'tenant_admin'));
+mdm.use('/ai-config/status', requireRole('system_admin', 'tenant_admin'));
+mdm.use('/ai-config/work-types', requireRole('system_admin', 'tenant_admin'));
 mdm.use('/ai-config/model-policy', requireRole('system_admin', 'tenant_admin'));
 mdm.use('/ai-config/model-policy/*', requireRole('system_admin', 'tenant_admin'));
 
@@ -144,14 +146,21 @@ mdm.post('/markets', async (c) => {
     const tenantId = requireTenantId(c);
     if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
     const body = await c.req.json<{ code: string; name: string; currency?: string; timezone?: string; languages?: { language: string; isDefault?: boolean }[] }>();
+
+    const globalEntry = await prisma.globalMarket.findUnique({ where: { code: body.code.toLowerCase() } });
+    if (!globalEntry || !globalEntry.enabled) {
+        return c.json({ error: `Market code '${body.code}' is not available in system registry. Contact system admin.` }, 400);
+    }
+
     const item = await withTenant(tenantId, (tx) =>
         tx.market.create({
             data: {
                 tenantId,
                 code: body.code,
                 name: body.name,
-                currency: body.currency ?? 'USD',
-                timezone: body.timezone ?? 'America/New_York',
+                currency: body.currency ?? globalEntry.currency,
+                timezone: body.timezone ?? globalEntry.timezone,
+                globalMarketCode: globalEntry.code,
                 languages: body.languages ? { create: body.languages } : undefined,
             },
             include: { languages: true },
@@ -234,6 +243,12 @@ mdm.post('/platforms', async (c) => {
     const tenantId = requireTenantId(c);
     if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
     const body = await c.req.json<{ code: string; name: string; apiType: string; fulfillmentModes?: { code: string; name: string }[] }>();
+
+    const globalEntry = await prisma.globalPlatform.findUnique({ where: { code: body.code.toLowerCase() } });
+    if (!globalEntry || !globalEntry.enabled) {
+        return c.json({ error: `Platform code '${body.code}' is not available in system registry. Contact system admin.` }, 400);
+    }
+
     const item = await withTenant(tenantId, (tx) =>
         tx.platform.create({
             data: {
@@ -241,6 +256,7 @@ mdm.post('/platforms', async (c) => {
                 code: body.code,
                 name: body.name,
                 apiType: body.apiType,
+                globalPlatformCode: globalEntry.code,
                 fulfillmentModes: body.fulfillmentModes ? { create: body.fulfillmentModes } : undefined,
             },
             include: { fulfillmentModes: true },
@@ -731,8 +747,14 @@ mdm.post('/erp-systems', async (c) => {
     const tenantId = requireTenantId(c);
     if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
     const body = await c.req.json<{ code: string; name: string; erpType: string; syncDirection?: string }>();
+
+    const globalEntry = await prisma.globalErpSystem.findUnique({ where: { code: body.erpType.toLowerCase() } });
+    if (!globalEntry || !globalEntry.enabled) {
+        return c.json({ error: `ERP type '${body.erpType}' is not available in system registry. Contact system admin.` }, 400);
+    }
+
     const item = await withTenant(tenantId, (tx) =>
-        tx.erpSystem.create({ data: { tenantId, ...body } }),
+        tx.erpSystem.create({ data: { tenantId, ...body, globalErpCode: globalEntry.code } }),
     );
     return c.json({ item }, 201);
 });
@@ -761,6 +783,70 @@ mdm.post('/erp-systems/:id/test-connection', async (c) => {
 // ══════════════════════════════════════════════════════════
 //  AI Integrations Configuration
 // ══════════════════════════════════════════════════════════
+
+mdm.get('/ai-config/status', async (c) => {
+    const tenantId = requireTenantId(c);
+    if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
+
+    const tenantPolicy = await withTenant(tenantId, (tx) =>
+        tx.policyConfig.findFirst({ where: { tenantId, policyKey: 'ai_integrations' } })
+    );
+    const tenantConfig = (tenantPolicy?.policyValue as AIConfig) ?? {};
+
+    const platformPolicy = await prisma.policyConfig.findFirst({
+        where: { tenantId: SYSTEM_TENANT_ID, policyKey: 'platform_ai_config' },
+    });
+    const platformConfig = (platformPolicy?.policyValue as AIConfig) ?? {};
+
+    let keySource: 'tenant' | 'platform' | 'none' = 'none';
+    if (tenantConfig.geminiKey) {
+        keySource = 'tenant';
+    } else if (platformConfig.geminiKey || process.env.GEMINI_API_KEY) {
+        keySource = 'platform';
+    }
+
+    return c.json({
+        provider: 'google-gemini',
+        keySource,
+        modelId: tenantConfig.modelId ?? platformConfig.modelId ?? DEFAULT_MODEL_ID,
+        connected: keySource !== 'none',
+    });
+});
+
+mdm.get('/ai-config/work-types', async (c) => {
+    const tenantId = requireTenantId(c);
+    if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
+
+    const tenantPolicy = await withTenant(tenantId, (tx) =>
+        tx.policyConfig.findFirst({ where: { tenantId, policyKey: 'ai_integrations' } })
+    );
+    const tenantConfig = (tenantPolicy?.policyValue as AIConfig) ?? {};
+
+    const platformPolicy = await prisma.policyConfig.findFirst({
+        where: { tenantId: SYSTEM_TENANT_ID, policyKey: 'platform_ai_config' },
+    });
+    const platformConfig = (platformPolicy?.policyValue as AIConfig) ?? {};
+
+    const items = Object.values(WorkType).map((wt) => {
+        const meta = WORK_TYPE_META[wt];
+        const tenantModel = tenantConfig.models?.[wt];
+        const platformModel = platformConfig.models?.[wt];
+        const systemDefault = DEFAULT_MODELS[wt];
+        const effectiveModel = tenantModel ?? tenantConfig.modelId ?? platformModel ?? platformConfig.modelId ?? systemDefault;
+
+        return {
+            workType: wt,
+            label: meta.label,
+            description: meta.description,
+            available: meta.available,
+            tenantModel: tenantModel ?? null,
+            systemDefault,
+            effectiveModel,
+        };
+    });
+
+    return c.json({ items });
+});
 
 mdm.get('/ai-config', async (c) => {
     const tenantId = requireTenantId(c);
@@ -921,7 +1007,7 @@ mdm.post('/ai-config', async (c) => {
     if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
     const role = getAuthRole(c);
     if (!canManageAiConfig(role)) return c.json({ error: 'insufficient permissions' }, 403);
-    const body = await c.req.json<{ geminiKey: string; modelId?: string }>();
+    const body = await c.req.json<{ geminiKey?: string; modelId?: string; models?: Partial<Record<string, string>> }>();
     const modelId = body.modelId || DEFAULT_MODEL_ID;
     const policy = await loadModelPolicy(tenantId);
     const allowedItems = filterModelsByPolicy(role, policy);
@@ -933,16 +1019,26 @@ mdm.post('/ai-config', async (c) => {
         }, 403);
     }
 
-    // findFirst then update or create
     const existing = await withTenant(tenantId, (tx) =>
         tx.policyConfig.findFirst({ where: { tenantId, policyKey: 'ai_integrations' } })
     );
+    const currentConfig = (existing?.policyValue as AIConfig) ?? {};
+
+    const policyValue: AIConfig = {
+        geminiKey: body.geminiKey !== undefined ? body.geminiKey : currentConfig.geminiKey,
+        modelId,
+    };
+    if (body.models !== undefined) {
+        policyValue.models = body.models as Partial<Record<WorkType, string>>;
+    } else if (currentConfig.models) {
+        policyValue.models = currentConfig.models;
+    }
 
     if (existing) {
         await withTenant(tenantId, (tx) =>
             tx.policyConfig.update({
                 where: { id: existing.id },
-                data: { policyValue: { geminiKey: body.geminiKey, modelId } }
+                data: { policyValue: policyValue as any }
             })
         );
     } else {
@@ -951,7 +1047,7 @@ mdm.post('/ai-config', async (c) => {
                 data: {
                     tenantId,
                     policyKey: 'ai_integrations',
-                    policyValue: { geminiKey: body.geminiKey, modelId },
+                    policyValue: policyValue as any,
                     effectiveFrom: new Date()
                 }
             })
@@ -966,21 +1062,28 @@ mdm.post('/ai-config/test', async (c) => {
     if (!tenantId) return c.json({ error: 'tenantId required' }, 400);
     const role = getAuthRole(c);
     if (!canManageAiConfig(role)) return c.json({ error: 'insufficient permissions' }, 403);
-    const body = await c.req.json<{ geminiKey: string; modelId?: string }>();
+    const body = await c.req.json<{ geminiKey?: string; modelId?: string; useStoredKey?: boolean }>();
 
-    // If the provided key is masked (contains '...'), try to use the persisted one
-    let keyToTest = body.geminiKey;
+    let keyToTest: string | undefined;
     let modelToTest = body.modelId || DEFAULT_MODEL_ID;
 
-    if (keyToTest.includes('...')) {
+    if (body.useStoredKey === true) {
         const existing = await withTenant(tenantId, (tx) =>
             tx.policyConfig.findFirst({ where: { tenantId, policyKey: 'ai_integrations' } })
         );
         if (existing) {
             const val = existing.policyValue as any;
-            keyToTest = val?.geminiKey || keyToTest;
+            keyToTest = val?.geminiKey;
             modelToTest = body.modelId || val?.modelId || modelToTest;
         }
+        if (!keyToTest) {
+            return c.json({ error: 'No stored API key found for this tenant' }, 400);
+        }
+    } else {
+        if (!body.geminiKey) {
+            return c.json({ error: 'geminiKey is required when useStoredKey is not set' }, 400);
+        }
+        keyToTest = body.geminiKey;
     }
 
     const policy = await loadModelPolicy(tenantId);

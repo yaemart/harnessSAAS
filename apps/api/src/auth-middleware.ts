@@ -82,6 +82,39 @@ export const extractUser = createMiddleware<{
     }
   }
 
+  // In passthrough mode, still honor Bearer tokens when present
+  if (env.AUTH_MODE === 'passthrough') {
+    const authHeader = c.req.header('authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const payload = await verifyAccessToken(authHeader.slice(7));
+        const userId = payload.sub!;
+        const tenantId = payload.tid;
+        const role = payload.role;
+
+        if (VALID_ROLES.includes(role)) {
+          const scopeStrings = payload.scopes ?? [];
+          const scopes = scopeStrings.map((s: string) => {
+            const [scopeType, ...rest] = s.split(':');
+            return { scopeType, scopeValue: rest.join(':') };
+          });
+
+          c.set('auth', {
+            userId,
+            tenantId,
+            role,
+            scopes,
+            authMode: 'jwt',
+          });
+
+          return next();
+        }
+      } catch {
+        // JWT invalid — fall through to passthrough headers
+      }
+    }
+  }
+
   if (env.NODE_ENV === 'production' && env.AUTH_MODE === 'passthrough') {
     return c.json({ error: 'pass-through auth disabled in production' }, 503);
   }

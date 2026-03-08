@@ -27,56 +27,61 @@ function verifyPassword(password: string, salt: string, hash: string): boolean {
 }
 
 auth.post('/login', async (c) => {
-  const body = await c.req.json<{ email: string; password: string }>();
-  if (!body?.email || !body?.password) {
-    return c.json({ error: 'email and password required' }, 400);
-  }
+  try {
+    const body = await c.req.json<{ email: string; password: string }>();
+    if (!body?.email || !body?.password) {
+      return c.json({ error: 'email and password required' }, 400);
+    }
 
-  const user = await prisma.user.findUnique({
-    where: { email: body.email },
-    include: { scopes: true },
-  });
+    const user = await prisma.user.findUnique({
+      where: { email: body.email },
+      include: { scopes: true },
+    });
 
-  if (!user || !user.isActive || !user.passwordHash) {
-    return c.json({ error: 'invalid credentials' }, 401);
-  }
+    if (!user || !user.isActive || !user.passwordHash) {
+      return c.json({ error: 'invalid credentials' }, 401);
+    }
 
-  // passwordHash format: "salt:hash"
-  const [salt, hash] = user.passwordHash.split(':');
-  if (!salt || !hash || !verifyPassword(body.password, salt, hash)) {
-    return c.json({ error: 'invalid credentials' }, 401);
-  }
+    // passwordHash format: "salt:hash"
+    const [salt, hash] = user.passwordHash.split(':');
+    if (!salt || !hash || !verifyPassword(body.password, salt, hash)) {
+      return c.json({ error: 'invalid credentials' }, 401);
+    }
 
-  const scopes = user.scopes.map((s) => `${s.scopeType}:${s.scopeValue}`);
+    const scopes = user.scopes.map((s) => `${s.scopeType}:${s.scopeValue}`);
 
-  const accessToken = await signAccessToken({
-    userId: user.id,
-    tenantId: user.tenantId,
-    role: user.role as Role,
-    scopes,
-  });
-
-  const refresh = await createRefreshToken(user.id, user.tenantId);
-
-  setCookie(c, 'refresh_token', refresh.token, {
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'Strict',
-    path: '/auth/refresh',
-    maxAge: 7 * 24 * 60 * 60,
-  });
-
-  return c.json({
-    accessToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
+    const accessToken = await signAccessToken({
+      userId: user.id,
       tenantId: user.tenantId,
-      role: user.role,
+      role: user.role as Role,
       scopes,
-    },
-  });
+    });
+
+    const refresh = await createRefreshToken(user.id, user.tenantId);
+
+    setCookie(c, 'refresh_token', refresh.token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      path: '/auth/refresh',
+      maxAge: 7 * 24 * 60 * 60,
+    });
+
+    return c.json({
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        tenantId: user.tenantId,
+        role: user.role,
+        scopes,
+      },
+    });
+  } catch (err: unknown) {
+    console.error('[auth/login] error:', err);
+    return c.json({ error: 'Login failed' }, 500);
+  }
 });
 
 auth.post('/refresh', async (c) => {
